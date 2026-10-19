@@ -12,8 +12,21 @@ class BudgetsScreen extends StatelessWidget {
     final finance = Provider.of<FinanceProvider>(context);
     final budget = finance.budgets.isNotEmpty ? finance.budgets.first : null;
 
-    final double spent = budget?.spentAmount ?? 308.00;
+    final double spent =
+        budget != null ? finance.calculateBudgetSpent(budget) : 0.0;
     final double target = budget?.targetAmount ?? 560.00;
+    final double percentage = target > 0 ? (spent / target) : 0.0;
+    final double clampedFactor = percentage.clamp(0.001, 1.0);
+    final int displayPercent = (percentage * 100).round();
+    final bool isOverBudget = percentage > 1.0;
+    final Color progressColor =
+        isOverBudget ? AppColors.alertRed : AppColors.accentGreen;
+
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final double dayProgress = (now.day / daysInMonth).clamp(0.0, 1.0);
+    final double alignmentX = -1.0 + (dayProgress * 2.0);
+
     final double dailyAllowance = finance.dailySafeAllowance;
 
     return Scaffold(
@@ -44,16 +57,16 @@ class BudgetsScreen extends StatelessWidget {
             children: [
               // Hero Amount Section matching unnamed (1).webp
               Text(
-                "${spent.toStringAsFixed(0)} ${finance.currency}",
-                style: const TextStyle(
+                "${spent.toStringAsFixed(2)} ${finance.currency}",
+                style: TextStyle(
                   fontSize: 38,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.accentGreen,
+                  color: progressColor,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
-                "spent out of ${target.toStringAsFixed(0)} ${finance.currency}",
+                "spent out of ${target.toStringAsFixed(2)} ${finance.currency}",
                 style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.textMuted,
@@ -70,7 +83,7 @@ class BudgetsScreen extends StatelessWidget {
                     gridData: FlGridData(
                       show: true,
                       drawVerticalLine: false,
-                      getDrawingHorizontalLine: (val) => FlLine(
+                      getDrawingHorizontalLine: (val) => const FlLine(
                         color: AppColors.borderLight,
                         strokeWidth: 1,
                         dashArray: [4, 4],
@@ -82,21 +95,24 @@ class BudgetsScreen extends StatelessWidget {
                           showTitles: true,
                           reservedSize: 42,
                           getTitlesWidget: (val, meta) {
-                            if (val == 0)
+                            if (val == 0) {
                               return Text("0 ${finance.currency}",
                                   style: const TextStyle(
                                       fontSize: 10,
                                       color: AppColors.textMuted));
-                            if (val == 280)
+                            }
+                            if (val == 280) {
                               return Text("280 ${finance.currency}",
                                   style: const TextStyle(
                                       fontSize: 10,
                                       color: AppColors.textMuted));
-                            if (val == 560)
+                            }
+                            if (val == 560) {
                               return Text("560 ${finance.currency}",
                                   style: const TextStyle(
                                       fontSize: 10,
                                       color: AppColors.textMuted));
+                            }
                             return const SizedBox();
                           },
                         ),
@@ -227,7 +243,7 @@ class BudgetsScreen extends StatelessWidget {
                   children: [
                     // Today Badge
                     Align(
-                      alignment: const Alignment(0.1, 0),
+                      alignment: Alignment(alignmentX, 0),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
@@ -254,15 +270,15 @@ class BudgetsScreen extends StatelessWidget {
                           Container(
                               height: 18, color: AppColors.chipBackground),
                           FractionallySizedBox(
-                            widthFactor: 0.55,
+                            widthFactor: clampedFactor,
                             child: Container(
                               height: 18,
-                              color: AppColors.accentGreen,
+                              color: progressColor,
                               alignment: Alignment.centerLeft,
                               padding: const EdgeInsets.only(left: 8),
-                              child: const Text(
-                                "55%",
-                                style: TextStyle(
+                              child: Text(
+                                "$displayPercent%",
+                                style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold),
@@ -273,14 +289,20 @@ class BudgetsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("Sept 1, 2026",
-                            style: TextStyle(
+                        Text(
+                            budget != null
+                                ? _formatDate(budget.startDate)
+                                : "Sept 1, 2026",
+                            style: const TextStyle(
                                 fontSize: 11, color: AppColors.textMuted)),
-                        Text("Sept 30, 2026",
-                            style: TextStyle(
+                        Text(
+                            budget != null
+                                ? _formatDate(budget.endDate)
+                                : "Sept 30, 2026",
+                            style: const TextStyle(
                                 fontSize: 11, color: AppColors.textMuted)),
                       ],
                     ),
@@ -306,9 +328,9 @@ class BudgetsScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Section: Previous Periods
-              Align(
+              const Align(
                 alignment: Alignment.centerLeft,
-                child: const Text(
+                child: Text(
                   "Previous Periods",
                   style: TextStyle(
                       fontSize: 17,
@@ -369,9 +391,9 @@ class BudgetsScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Recurring Subscriptions Radar Subsection
-              Align(
+              const Align(
                 alignment: Alignment.centerLeft,
-                child: const Text(
+                child: Text(
                   "Subscriptions Radar (Committed Bills)",
                   style: TextStyle(
                       fontSize: 16,
@@ -413,7 +435,7 @@ class BudgetsScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text("${finance.subscriptions.length} Active",
@@ -429,5 +451,23 @@ class BudgetsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static String _formatDate(DateTime dt) {
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sept",
+      "Oct",
+      "Nov",
+      "Dec"
+    ];
+    return "${months[dt.month - 1]} ${dt.day}, ${dt.year}";
   }
 }

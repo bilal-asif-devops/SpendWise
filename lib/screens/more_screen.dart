@@ -75,7 +75,8 @@ class _MoreScreenState extends State<MoreScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.accentGreen.withValues(alpha: 0.15),
+                              color:
+                                  AppColors.accentGreen.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
@@ -291,8 +292,8 @@ class _MoreScreenState extends State<MoreScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.accentGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
-                  border:
-                      Border.all(color: AppColors.accentGreen.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: AppColors.accentGreen.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
                   children: [

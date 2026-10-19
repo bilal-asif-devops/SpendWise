@@ -107,7 +107,9 @@ void main() {
       expect(provider.safeToSpendBalance, closeTo(expectedSafeToSpend, 0.01));
     });
 
-    test('Transfer between wallets modifies balances without distorting expenses', () {
+    test(
+        'Transfer between wallets modifies balances without distorting expenses',
+        () {
       final provider = FinanceProvider(storageService: MockStorageService());
       final initialExpenses = provider.totalExpenses;
 
@@ -142,7 +144,8 @@ void main() {
         accountId: payingAccount.id,
       );
 
-      final updatedAccount = provider.accounts.firstWhere((a) => a.id == payingAccount.id);
+      final updatedAccount =
+          provider.accounts.firstWhere((a) => a.id == payingAccount.id);
       expect(updatedAccount.balance, equals(initialBalance - 50.00));
       expect(provider.expenses.first.title, equals('Dinner'));
     });

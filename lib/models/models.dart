@@ -35,7 +35,7 @@ class Account {
         'creditLimit': creditLimit,
         'last4': last4,
         'icon': icon,
-        'color': color.value,
+        'color': color.toARGB32(),
         'isLiquid': isLiquid,
         'isExcludedFromSafeToSpend': isExcludedFromSafeToSpend,
       };
@@ -251,6 +251,28 @@ class Budget {
             DateTime.now().add(const Duration(days: 30)),
         icon: json['icon'] as String? ?? '🏡',
       );
+
+  Budget copyWith({
+    String? id,
+    String? name,
+    String? category,
+    double? targetAmount,
+    double? spentAmount,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? icon,
+  }) {
+    return Budget(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      targetAmount: targetAmount ?? this.targetAmount,
+      spentAmount: spentAmount ?? this.spentAmount,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      icon: icon ?? this.icon,
+    );
+  }
 }
 
 class ActivityInsight {

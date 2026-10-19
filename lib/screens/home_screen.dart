@@ -29,7 +29,8 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 22,
-                        backgroundColor: AppColors.accentGreen.withOpacity(0.2),
+                        backgroundColor:
+                            AppColors.accentGreen.withValues(alpha: 0.2),
                         child: Text(
                           finance.userName.isNotEmpty
                               ? finance.userName[0].toUpperCase()
@@ -138,7 +139,8 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Divider(color: Colors.white.withValues(alpha: 0.15), height: 1),
+                    Divider(
+                        color: Colors.white.withValues(alpha: 0.15), height: 1),
                     const SizedBox(height: 10),
                     const Row(
                       children: [
@@ -384,8 +386,8 @@ class HomeScreen extends StatelessWidget {
                   child: const Center(
                     child: Text(
                       "No upcoming bills yet.",
-                      style: TextStyle(
-                          color: AppColors.textMuted, fontSize: 13),
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   ),
                 )
@@ -637,8 +639,7 @@ class HomeScreen extends StatelessWidget {
                               "${a.name} (${finance.currency}${a.balance.toStringAsFixed(0)})"),
                         ))
                     .toList(),
-                onChanged: (val) =>
-                    setState(() => selectedAccountId = val!),
+                onChanged: (val) => setState(() => selectedAccountId = val!),
               ),
             ],
           ),
@@ -729,13 +730,38 @@ class HomeScreen extends StatelessWidget {
                   foregroundColor: Colors.white),
               onPressed: () {
                 final amt = double.tryParse(amountCtrl.text);
-                if (amt != null && amt > 0 && fromId != toId) {
-                  finance.transferBetweenAccounts(
-                    fromAccountId: fromId,
-                    toAccountId: toId,
-                    amount: amt,
+                if (amt == null || amt <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          "Please enter a valid transfer amount greater than zero."),
+                      backgroundColor: AppColors.alertRed,
+                    ),
                   );
+                  return;
+                }
+                final success = finance.transferBetweenAccounts(
+                  fromAccountId: fromId,
+                  toAccountId: toId,
+                  amount: amt,
+                );
+                if (success) {
                   Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          "Transferred ${finance.currency}${amt.toStringAsFixed(2)} successfully!"),
+                      backgroundColor: AppColors.accentGreen,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text(finance.lastErrorMessage ?? "Transfer failed."),
+                      backgroundColor: AppColors.alertRed,
+                    ),
+                  );
                 }
               },
               child: const Text("Transfer"),

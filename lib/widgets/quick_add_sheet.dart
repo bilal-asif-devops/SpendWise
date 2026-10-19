@@ -27,9 +27,26 @@ class _QuickAddExpenseSheetState extends State<QuickAddExpenseSheet> {
   void _onKeyPress(String val) {
     setState(() {
       if (_amountStr == "0.00" || _amountStr == "0") {
-        _amountStr = val;
+        if (val == ".") {
+          _amountStr = "0.";
+        } else {
+          _amountStr = val;
+        }
       } else {
-        _amountStr += val;
+        if (val == ".") {
+          if (_amountStr.contains(".")) {
+            return; // Ignore second decimal point
+          }
+          _amountStr += val;
+        } else {
+          if (_amountStr.contains(".")) {
+            final parts = _amountStr.split(".");
+            if (parts.length > 1 && parts[1].length >= 2) {
+              return; // Max 2 decimal digits
+            }
+          }
+          _amountStr += val;
+        }
       }
     });
   }
@@ -38,6 +55,9 @@ class _QuickAddExpenseSheetState extends State<QuickAddExpenseSheet> {
     setState(() {
       if (_amountStr.length > 1) {
         _amountStr = _amountStr.substring(0, _amountStr.length - 1);
+        if (_amountStr.isEmpty) {
+          _amountStr = "0.00";
+        }
       } else {
         _amountStr = "0.00";
       }
@@ -46,27 +66,36 @@ class _QuickAddExpenseSheetState extends State<QuickAddExpenseSheet> {
 
   void _saveExpense(BuildContext context) {
     final double? parsed = double.tryParse(_amountStr);
-    if (parsed != null && parsed > 0) {
-      final finance = Provider.of<FinanceProvider>(context, listen: false);
-      final accountId = _selectedAccountId ??
-          (finance.accounts.isNotEmpty ? finance.accounts.first.id : "acc_1");
-
-      finance.addExpense(
-        title: "$_selectedCategory Expense",
-        category: _selectedCategory,
-        amount: parsed,
-        accountId: accountId,
-        note: _noteController.text.isNotEmpty ? _noteController.text : null,
-      );
-      Navigator.pop(context);
+    if (parsed == null || parsed <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              "Recorded $_selectedCategory: ${finance.currency}$parsed successfully!"),
-          backgroundColor: AppColors.accentGreen,
+        const SnackBar(
+          content:
+              Text("Please enter a valid expense amount greater than zero."),
+          backgroundColor: AppColors.alertRed,
         ),
       );
+      return;
     }
+
+    final finance = Provider.of<FinanceProvider>(context, listen: false);
+    final accountId = _selectedAccountId ??
+        (finance.accounts.isNotEmpty ? finance.accounts.first.id : "acc_1");
+
+    finance.addExpense(
+      title: "$_selectedCategory Expense",
+      category: _selectedCategory,
+      amount: parsed,
+      accountId: accountId,
+      note: _noteController.text.isNotEmpty ? _noteController.text : null,
+    );
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            "Recorded $_selectedCategory: ${finance.currency}${parsed.toStringAsFixed(2)} successfully!"),
+        backgroundColor: AppColors.accentGreen,
+      ),
+    );
   }
 
   @override

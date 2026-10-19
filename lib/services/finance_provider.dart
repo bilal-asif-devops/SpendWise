@@ -13,6 +13,7 @@ class FinanceProvider with ChangeNotifier {
   bool _biometricsEnabled = true;
   bool _isDarkMode = false;
   bool _isInitialized = false;
+  String? _lastErrorMessage;
 
   List<Account> _accounts = [];
   List<Expense> _expenses = [];
@@ -27,6 +28,7 @@ class FinanceProvider with ChangeNotifier {
 
   // Getters
   bool get isInitialized => _isInitialized;
+  String? get lastErrorMessage => _lastErrorMessage;
   String get userName => _userName;
   String get userEmail => _userEmail;
   String get currency => _currency;
@@ -231,12 +233,52 @@ class FinanceProvider with ChangeNotifier {
         name: "Home Budget",
         category: "General Discretionary",
         targetAmount: 560.00,
-        spentAmount: 308.00,
+        spentAmount: 0.0,
         startDate: DateTime(DateTime.now().year, DateTime.now().month, 1),
         endDate: DateTime(DateTime.now().year, DateTime.now().month + 1, 0),
         icon: "🏡",
       ),
     ];
+    _recalculateBudgets();
+  }
+
+  // Financial Calculations & Budgets
+  double calculateBudgetSpent(Budget budget) {
+    final startOfDay = DateTime(
+      budget.startDate.year,
+      budget.startDate.month,
+      budget.startDate.day,
+      0,
+      0,
+      0,
+    );
+    final endOfDay = DateTime(
+      budget.endDate.year,
+      budget.endDate.month,
+      budget.endDate.day,
+      23,
+      59,
+      59,
+      999,
+    );
+
+    final isAllCategories = budget.category.toLowerCase() == 'all' ||
+        budget.category.toLowerCase() == 'general' ||
+        budget.category.toLowerCase() == 'general discretionary';
+
+    return _expenses.where((e) {
+      final inRange = !e.date.isBefore(startOfDay) && !e.date.isAfter(endOfDay);
+      if (!inRange) return false;
+      if (isAllCategories) return true;
+      return e.category.toLowerCase() == budget.category.toLowerCase();
+    }).fold(0.0, (sum, e) => sum + e.amount);
+  }
+
+  void _recalculateBudgets() {
+    _budgets = _budgets.map((b) {
+      final spent = calculateBudgetSpent(b);
+      return b.copyWith(spentAmount: spent);
+    }).toList();
   }
 
   // Actions & Mutations
@@ -282,29 +324,110 @@ class FinanceProvider with ChangeNotifier {
       ),
     );
 
+    _recalculateBudgets();
     notifyListeners();
     _persistToStorage();
   }
 
-  void transferBetweenAccounts({
+  bool transferBetweenAccounts({
     required String fromAccountId,
     required String toAccountId,
     required double amount,
   }) {
+    if (amount <= 0) {
+      _lastErrorMessage = "Transfer amount must be greater than zero.";
+      notifyListeners();
+      return false;
+    }
+
+    if (fromAccountId == toAccountId) {
+      _lastErrorMessage = "Source and destination accounts must be different.";
+      notifyListeners();
+      return false;
+    }
+
     final fromIndex = _accounts.indexWhere((a) => a.id == fromAccountId);
     final toIndex = _accounts.indexWhere((a) => a.id == toAccountId);
 
-    if (fromIndex != -1 && toIndex != -1 && amount > 0) {
-      final fromAcc = _accounts[fromIndex];
-      final toAcc = _accounts[toIndex];
+    if (fromIndex == -1 || toIndex == -1) {
+      _lastErrorMessage = "Selected account does not exist.";
+      notifyListeners();
+      return false;
+    }
 
-      _accounts[fromIndex] =
-          fromAcc.copyWith(balance: fromAcc.balance - amount);
-      _accounts[toIndex] = toAcc.copyWith(balance: toAcc.balance + amount);
+    final fromAcc = _accounts[fromIndex];
+    final toAcc = _accounts[toIndex];
 
+    // Case 1: Paying a credit card bill (Destination is Credit Card)
+    if (toAcc.type == AccountType.credit) {
+      if (fromAcc.type == AccountType.credit) {
+        _lastErrorMessage =
+            "Cannot pay a credit card bill using another credit card.";
+        notifyListeners();
+        return false;
+      }
+      if (fromAcc.balance < amount) {
+        _lastErrorMessage =
+            "Insufficient funds in source account (${fromAcc.name}).";
+        notifyListeners();
+        return false;
+      }
+      if (amount > toAcc.balance) {
+        _lastErrorMessage =
+            "Payment amount exceeds outstanding liability of $_currency${toAcc.balance.toStringAsFixed(2)}.";
+        notifyListeners();
+        return false;
+      }
+
+      final updatedFrom = fromAcc.copyWith(balance: fromAcc.balance - amount);
+      final updatedTo = toAcc.copyWith(balance: toAcc.balance - amount);
+
+      _accounts[fromIndex] = updatedFrom;
+      _accounts[toIndex] = updatedTo;
+      _lastErrorMessage = null;
       notifyListeners();
       _persistToStorage();
+      return true;
     }
+
+    // Case 2: Cash Advance / Draw from Credit Card (Source is Credit Card)
+    if (fromAcc.type == AccountType.credit) {
+      final availableCredit = (fromAcc.creditLimit) - fromAcc.balance;
+      if (amount > availableCredit) {
+        _lastErrorMessage =
+            "Transfer exceeds available credit limit of $_currency${availableCredit.toStringAsFixed(2)}.";
+        notifyListeners();
+        return false;
+      }
+
+      final updatedFrom = fromAcc.copyWith(balance: fromAcc.balance + amount);
+      final updatedTo = toAcc.copyWith(balance: toAcc.balance + amount);
+
+      _accounts[fromIndex] = updatedFrom;
+      _accounts[toIndex] = updatedTo;
+      _lastErrorMessage = null;
+      notifyListeners();
+      _persistToStorage();
+      return true;
+    }
+
+    // Case 3: Standard transfer between liquid/asset accounts (debit, cash)
+    if (fromAcc.balance < amount) {
+      _lastErrorMessage =
+          "Insufficient funds in source account (${fromAcc.name}).";
+      notifyListeners();
+      return false;
+    }
+
+    final updatedFrom = fromAcc.copyWith(balance: fromAcc.balance - amount);
+    final updatedTo = toAcc.copyWith(balance: toAcc.balance + amount);
+
+    _accounts[fromIndex] = updatedFrom;
+    _accounts[toIndex] = updatedTo;
+    _lastErrorMessage = null;
+    notifyListeners();
+    _persistToStorage();
+    return true;
   }
 
   void addSubscription({
@@ -436,6 +559,7 @@ class FinanceProvider with ChangeNotifier {
       _budgets = (vault['budgets'] as List)
           .map((b) => Budget.fromJson(b as Map<String, dynamic>))
           .toList();
+      _recalculateBudgets();
     }
   }
 

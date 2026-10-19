@@ -123,7 +123,8 @@ class WalletsScreen extends StatelessWidget {
                               ),
                               belowBarData: BarAreaData(
                                 show: true,
-                                color: AppColors.accentGreen.withValues(alpha: 0.15),
+                                color: AppColors.accentGreen
+                                    .withValues(alpha: 0.15),
                               ),
                             ),
                           ],
@@ -484,13 +485,38 @@ class WalletsScreen extends StatelessWidget {
                   foregroundColor: Colors.white),
               onPressed: () {
                 final amt = double.tryParse(amountCtrl.text);
-                if (amt != null && amt > 0) {
-                  finance.transferBetweenAccounts(
-                    fromAccountId: fromAccountId,
-                    toAccountId: creditCard.id,
-                    amount: amt,
+                if (amt == null || amt <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          "Please enter a valid payment amount greater than zero."),
+                      backgroundColor: AppColors.alertRed,
+                    ),
                   );
+                  return;
+                }
+                final success = finance.transferBetweenAccounts(
+                  fromAccountId: fromAccountId,
+                  toAccountId: creditCard.id,
+                  amount: amt,
+                );
+                if (success) {
                   Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          "Paid ${finance.currency}${amt.toStringAsFixed(2)} toward ${creditCard.name} successfully!"),
+                      backgroundColor: AppColors.accentGreen,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text(finance.lastErrorMessage ?? "Payment failed."),
+                      backgroundColor: AppColors.alertRed,
+                    ),
+                  );
                 }
               },
               child: const Text("Pay Bill"),
