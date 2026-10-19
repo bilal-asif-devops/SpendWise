@@ -337,6 +337,8 @@ class FinanceProvider with ChangeNotifier {
       ),
     );
 
+    _subscriptions.sort((a, b) => a.daysRemaining.compareTo(b.daysRemaining));
+
     notifyListeners();
     _persistToStorage();
   }

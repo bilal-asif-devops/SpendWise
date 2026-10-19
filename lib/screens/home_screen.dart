@@ -4,6 +4,7 @@ import '../models/models.dart';
 import '../services/finance_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/quick_add_sheet.dart';
+import 'subscriptions_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -339,20 +340,66 @@ class HomeScreen extends StatelessWidget {
                       color: AppColors.textDark,
                     ),
                   ),
-                  Text(
-                    "Radar (${finance.subscriptions.length})",
-                    style: const TextStyle(
-                        color: AppColors.accentGreen,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubscriptionsScreen(),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 2),
+                      child: Row(
+                        children: [
+                          Text(
+                            "Radar (${finance.subscriptions.length})",
+                            style: const TextStyle(
+                                color: AppColors.accentGreen,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 11, color: AppColors.accentGreen),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
 
-              if (finance.subscriptions.isNotEmpty)
-                _buildUpcomingSubCard(
-                    finance.subscriptions.first, finance.currency),
+              if (finance.subscriptions.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceWhite,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "No upcoming bills yet.",
+                      style: TextStyle(
+                          color: AppColors.textMuted, fontSize: 13),
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: finance.subscriptions.length,
+                  separatorBuilder: (ctx, idx) => const SizedBox(height: 8),
+                  itemBuilder: (ctx, idx) {
+                    final sub = finance.subscriptions[idx];
+                    return _buildUpcomingSubCard(sub, finance.currency);
+                  },
+                ),
               const SizedBox(height: 24),
 
               // Section: Recent Transactions / Payments
@@ -468,6 +515,24 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildUpcomingSubCard(dynamic sub, String currency) {
+    Color badgeColor;
+    final nameLower = sub.name.toString().toLowerCase();
+    if (nameLower.contains("netflix")) {
+      badgeColor = Colors.red.shade600;
+    } else if (nameLower.contains("spotify")) {
+      badgeColor = const Color(0xFF1DB954);
+    } else if (nameLower.contains("icloud") || nameLower.contains("apple")) {
+      badgeColor = Colors.blue.shade700;
+    } else if (nameLower.contains("gym") || nameLower.contains("fit")) {
+      badgeColor = Colors.orange.shade700;
+    } else if (nameLower.contains("amazon") || nameLower.contains("prime")) {
+      badgeColor = const Color(0xFF00A8E1);
+    } else if (nameLower.contains("youtube")) {
+      badgeColor = const Color(0xFFFF0000);
+    } else {
+      badgeColor = AppColors.primaryNavy;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -482,7 +547,7 @@ class HomeScreen extends StatelessWidget {
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.red.shade600,
+              color: badgeColor,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
@@ -506,9 +571,11 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   "${sub.walletName} · Due in ${sub.daysRemaining} days",
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.alertAmber,
+                      color: sub.daysRemaining <= 3
+                          ? AppColors.alertAmber
+                          : AppColors.textMuted,
                       fontWeight: FontWeight.w600),
                 ),
               ],
@@ -524,54 +591,83 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _showAddSubDialog(BuildContext context) {
+    final finance = Provider.of<FinanceProvider>(context, listen: false);
     final nameCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
     final daysCtrl = TextEditingController(text: "30");
+    String selectedAccountId =
+        finance.accounts.isNotEmpty ? finance.accounts.first.id : "acc_1";
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("New Subscription"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text("New Subscription"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
                 controller: nameCtrl,
                 decoration: const InputDecoration(
-                    labelText: "Service Name (e.g. Netflix)")),
-            TextField(
+                    labelText: "Service Name (e.g. Spotify, Gym)"),
+              ),
+              const SizedBox(height: 8),
+              TextField(
                 controller: amountCtrl,
-                decoration: const InputDecoration(labelText: "Monthly Amount"),
-                keyboardType: TextInputType.number),
-            TextField(
+                decoration:
+                    const InputDecoration(labelText: "Monthly Amount (\$)"),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 8),
+              TextField(
                 controller: daysCtrl,
                 decoration:
                     const InputDecoration(labelText: "Days until next bill"),
-                keyboardType: TextInputType.number),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: selectedAccountId,
+                decoration: const InputDecoration(labelText: "Paying Wallet"),
+                items: finance.accounts
+                    .map((a) => DropdownMenuItem(
+                          value: a.id,
+                          child: Text(
+                              "${a.name} (${finance.currency}${a.balance.toStringAsFixed(0)})"),
+                        ))
+                    .toList(),
+                onChanged: (val) =>
+                    setState(() => selectedAccountId = val!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentGreen,
+                  foregroundColor: Colors.white),
+              onPressed: () {
+                final amt = double.tryParse(amountCtrl.text);
+                if (nameCtrl.text.isNotEmpty && amt != null && amt > 0) {
+                  finance.addSubscription(
+                    name: nameCtrl.text,
+                    category: "Entertainment",
+                    amount: amt,
+                    days: int.tryParse(daysCtrl.text) ?? 30,
+                    accountId: selectedAccountId,
+                  );
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text("Add"),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentGreen,
-                foregroundColor: Colors.white),
-            onPressed: () {
-              if (nameCtrl.text.isNotEmpty && amountCtrl.text.isNotEmpty) {
-                Provider.of<FinanceProvider>(context, listen: false)
-                    .addSubscription(
-                  name: nameCtrl.text,
-                  category: "Entertainment",
-                  amount: double.tryParse(amountCtrl.text) ?? 10.0,
-                  days: int.tryParse(daysCtrl.text) ?? 30,
-                );
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text("Add"),
-          ),
-        ],
       ),
     );
   }
