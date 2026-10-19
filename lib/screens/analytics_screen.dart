@@ -52,7 +52,8 @@ class AnalyticsScreen extends StatelessWidget {
                   children: [
                     const Text(
                       "Spending Breakdown",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     const SizedBox(height: 20),
 
@@ -67,7 +68,8 @@ class AnalyticsScreen extends StatelessWidget {
                             value: 0.68,
                             strokeWidth: 20,
                             backgroundColor: AppColors.chipBackground,
-                            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentGreen),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.accentGreen),
                           ),
                         ),
                         Column(
@@ -83,7 +85,8 @@ class AnalyticsScreen extends StatelessWidget {
                             ),
                             const Text(
                               "Total Spent",
-                              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                              style: TextStyle(
+                                  fontSize: 12, color: AppColors.textMuted),
                             ),
                           ],
                         ),
@@ -92,10 +95,14 @@ class AnalyticsScreen extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Category Legend Rows
-                    _buildLegendRow("Food & Groceries", "45%", const Color(0xFF10B981)),
-                    _buildLegendRow("Shopping & Essentials", "25%", const Color(0xFF3B82F6)),
-                    _buildLegendRow("Transport", "18%", const Color(0xFFF59E0B)),
-                    _buildLegendRow("Subscriptions", "12%", const Color(0xFF8B5CF6)),
+                    _buildLegendRow(
+                        "Food & Groceries", "45%", const Color(0xFF10B981)),
+                    _buildLegendRow("Shopping & Essentials", "25%",
+                        const Color(0xFF3B82F6)),
+                    _buildLegendRow(
+                        "Transport", "18%", const Color(0xFFF59E0B)),
+                    _buildLegendRow(
+                        "Subscriptions", "12%", const Color(0xFF8B5CF6)),
                   ],
                 ),
               ),
@@ -117,7 +124,8 @@ class AnalyticsScreen extends StatelessWidget {
                         color: AppColors.accentGreen.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(Icons.savings_outlined, color: AppColors.accentGreen, size: 28),
+                      child: const Icon(Icons.savings_outlined,
+                          color: AppColors.accentGreen, size: 28),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -126,11 +134,13 @@ class AnalyticsScreen extends StatelessWidget {
                         children: [
                           const Text(
                             "Monthly Savings",
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            style: TextStyle(
+                                color: AppColors.textMuted, fontSize: 12),
                           ),
                           Text(
                             "${finance.currency}320.00 / ${finance.currency}400 goal",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                           const SizedBox(height: 6),
                           ClipRRect(
@@ -139,7 +149,8 @@ class AnalyticsScreen extends StatelessWidget {
                               value: 0.8,
                               minHeight: 6,
                               backgroundColor: AppColors.chipBackground,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGreen),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.accentGreen),
                             ),
                           ),
                         ],
@@ -164,7 +175,12 @@ class AnalyticsScreen extends StatelessWidget {
           color: isSelected ? AppColors.surfaceWhite : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))]
+              ? [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2))
+                ]
               : null,
         ),
         child: Text(
@@ -187,12 +203,22 @@ class AnalyticsScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(width: 10, height: 10, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
+              Container(
+                  width: 10,
+                  height: 10,
+                  decoration:
+                      BoxDecoration(color: dotColor, shape: BoxShape.circle)),
               const SizedBox(width: 10),
-              Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textDark)),
+              Text(label,
+                  style:
+                      const TextStyle(fontSize: 13, color: AppColors.textDark)),
             ],
           ),
-          Text(percent, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textDark)),
+          Text(percent,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: AppColors.textDark)),
         ],
       ),
     );

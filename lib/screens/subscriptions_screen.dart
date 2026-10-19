@@ -16,7 +16,8 @@ class SubscriptionsScreen extends StatelessWidget {
         title: const Text("Subscriptions Radar"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: AppColors.primaryNavy),
+            icon: const Icon(Icons.add_circle_outline,
+                color: AppColors.primaryNavy),
             onPressed: () => _showAddSubscriptionDialog(context),
           ),
         ],
@@ -54,7 +55,8 @@ class SubscriptionsScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       "Across all ${finance.subscriptions.length} active recurring subscriptions.",
-                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white60, fontSize: 12),
                     ),
                   ],
                 ),
@@ -123,7 +125,8 @@ class SubscriptionsScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: sub.isDueSoon
                                       ? AppColors.alertAmber.withOpacity(0.15)
@@ -135,7 +138,9 @@ class SubscriptionsScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: sub.isDueSoon ? AppColors.alertAmber : AppColors.accentGreen,
+                                    color: sub.isDueSoon
+                                        ? AppColors.alertAmber
+                                        : AppColors.accentGreen,
                                   ),
                                 ),
                               ),
@@ -164,11 +169,13 @@ class SubscriptionsScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.accentGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.accentGreen.withOpacity(0.3)),
+                  border:
+                      Border.all(color: AppColors.accentGreen.withOpacity(0.3)),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.check_circle, color: AppColors.accentGreen, size: 24),
+                    Icon(Icons.check_circle,
+                        color: AppColors.accentGreen, size: 24),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -215,18 +222,33 @@ class SubscriptionsScreen extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Service Name (e.g. iCloud)")),
-            TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: "Monthly Amount (\$)"), keyboardType: TextInputType.number),
-            TextField(controller: daysCtrl, decoration: const InputDecoration(labelText: "Days until next billing"), keyboardType: TextInputType.number),
+            TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                    labelText: "Service Name (e.g. iCloud)")),
+            TextField(
+                controller: amountCtrl,
+                decoration:
+                    const InputDecoration(labelText: "Monthly Amount (\$)"),
+                keyboardType: TextInputType.number),
+            TextField(
+                controller: daysCtrl,
+                decoration:
+                    const InputDecoration(labelText: "Days until next billing"),
+                keyboardType: TextInputType.number),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentGreen, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentGreen,
+                foregroundColor: Colors.white),
             onPressed: () {
               if (nameCtrl.text.isNotEmpty && amountCtrl.text.isNotEmpty) {
-                Provider.of<FinanceProvider>(context, listen: false).addSubscription(
+                Provider.of<FinanceProvider>(context, listen: false)
+                    .addSubscription(
                   name: nameCtrl.text,
                   category: "Digital Service",
                   amount: double.tryParse(amountCtrl.text) ?? 10.0,

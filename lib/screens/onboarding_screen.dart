@@ -35,7 +35,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   borderRadius: BorderRadius.circular(26),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryNavy.withOpacity(0.3),
+                      color: AppColors.primaryNavy.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -85,7 +85,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
               // Currency Picker Card from Figma Screen 1 (Welcome)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceWhite,
                   borderRadius: BorderRadius.circular(16),
@@ -96,7 +97,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   children: [
                     const Text(
                       "Select Default Currency:",
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     DropdownButton<String>(
                       value: _selectedCurrency,
@@ -109,7 +111,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       onChanged: (val) {
                         if (val != null) {
                           setState(() => _selectedCurrency = val);
-                          Provider.of<FinanceProvider>(context, listen: false).updateCurrency(val);
+                          Provider.of<FinanceProvider>(context, listen: false)
+                              .updateCurrency(val);
                         }
                       },
                     ),
@@ -127,13 +130,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentGreen,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18)),
                     elevation: 0,
                   ),
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (ctx) => const MainNavigationScreen()),
+                      MaterialPageRoute(
+                          builder: (ctx) => const MainNavigationScreen()),
                     );
                   },
                   child: const Text(

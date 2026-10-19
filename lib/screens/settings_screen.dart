@@ -43,8 +43,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       radius: 28,
                       backgroundColor: AppColors.primaryNavy,
                       child: Text(
-                        finance.userName.isNotEmpty ? finance.userName[0].toUpperCase() : "B",
-                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                        finance.userName.isNotEmpty
+                            ? finance.userName[0].toUpperCase()
+                            : "B",
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -54,23 +59,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Text(
                             finance.userName,
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                            style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark),
                           ),
                           const SizedBox(height: 2),
                           const Text(
                             "bilal.uet@student.taxila.edu",
-                            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textMuted),
                           ),
                           const SizedBox(height: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.accentGreen.withOpacity(0.15),
+                              color: AppColors.accentGreen.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
                               "Free Tier • Local Storage",
-                              style: TextStyle(fontSize: 11, color: AppColors.accentGreen, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.accentGreen,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -84,7 +97,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Preferences Section
               const Text(
                 "Preferences & Security",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textMuted),
               ),
               const SizedBox(height: 10),
 
@@ -97,29 +113,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   children: [
                     SwitchListTile(
-                      activeColor: AppColors.accentGreen,
-                      title: const Text("Push Notifications", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: const Text("Alert 48h before auto-renew charges", style: TextStyle(fontSize: 12)),
+                      activeThumbColor: AppColors.accentGreen,
+                      title: const Text("Push Notifications",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: const Text(
+                          "Alert 48h before auto-renew charges",
+                          style: TextStyle(fontSize: 12)),
                       value: _notificationsEnabled,
-                      onChanged: (val) => setState(() => _notificationsEnabled = val),
+                      onChanged: (val) =>
+                          setState(() => _notificationsEnabled = val),
                     ),
                     const Divider(height: 1, indent: 16, endIndent: 16),
                     SwitchListTile(
-                      activeColor: AppColors.accentGreen,
-                      title: const Text("Biometric App Lock", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: const Text("Fingerprint / Face ID protection", style: TextStyle(fontSize: 12)),
+                      activeThumbColor: AppColors.accentGreen,
+                      title: const Text("Biometric App Lock",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: const Text("Fingerprint / Face ID protection",
+                          style: TextStyle(fontSize: 12)),
                       value: _biometricsEnabled,
-                      onChanged: (val) => setState(() => _biometricsEnabled = val),
+                      onChanged: (val) =>
+                          setState(() => _biometricsEnabled = val),
                     ),
                     const Divider(height: 1, indent: 16, endIndent: 16),
                     ListTile(
-                      title: const Text("Default Currency", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      title: const Text("Default Currency",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
                       trailing: DropdownButton<String>(
                         value: finance.currency,
                         underline: const SizedBox(),
                         items: const [
-                          DropdownMenuItem(value: "\$", child: Text("USD (\$)")),
-                          DropdownMenuItem(value: "Rs", child: Text("PKR (Rs)")),
+                          DropdownMenuItem(
+                              value: "\$", child: Text("USD (\$)")),
+                          DropdownMenuItem(
+                              value: "Rs", child: Text("PKR (Rs)")),
                           DropdownMenuItem(value: "€", child: Text("EUR (€)")),
                         ],
                         onChanged: (val) {
@@ -135,7 +164,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Data & Backup Section
               const Text(
                 "Data Management",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textMuted),
               ),
               const SizedBox(height: 10),
 
@@ -148,11 +180,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.file_download_outlined, color: AppColors.primaryNavy),
-                      title: const Text("Export Financial Report", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                      subtitle: const Text("Download monthly CSV / PDF statement", style: TextStyle(fontSize: 12)),
-                      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-                      onPressed: () {
+                      leading: const Icon(Icons.file_download_outlined,
+                          color: AppColors.primaryNavy),
+                      title: const Text("Export Financial Report",
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w600)),
+                      subtitle: const Text(
+                          "Download monthly CSV / PDF statement",
+                          style: TextStyle(fontSize: 12)),
+                      trailing: const Icon(Icons.chevron_right,
+                          color: AppColors.textMuted),
+                      onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text("Exported report successfully!"),

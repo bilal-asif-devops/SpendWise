@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/finance_provider.dart';
 import 'theme/app_theme.dart';
-import 'screens/onboarding_screen.dart';
+import 'screens/main_navigation.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,11 +18,17 @@ class SpendWiseApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => FinanceProvider()),
       ],
-      child: MaterialApp(
-        title: 'SpendWise',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const OnboardingScreen(),
+      child: Consumer<FinanceProvider>(
+        builder: (context, finance, child) {
+          return MaterialApp(
+            title: 'SpendWise',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: ThemeData.dark(useMaterial3: true),
+            themeMode: finance.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: const MainNavigationScreen(),
+          );
+        },
       ),
     );
   }

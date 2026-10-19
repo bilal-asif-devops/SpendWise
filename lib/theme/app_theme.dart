@@ -7,7 +7,7 @@ class AppColors {
   static const Color accentGreen = Color(0xFF10B981);
   static const Color alertAmber = Color(0xFFF59E0B);
   static const Color alertRed = Color(0xFFEF4444);
-  
+
   // Neutral Tones
   static const Color background = Color(0xFFF8FAFC);
   static const Color surfaceWhite = Color(0xFFFFFFFF);
