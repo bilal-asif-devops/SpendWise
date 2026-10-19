@@ -12,6 +12,7 @@ class LocalStorageService {
   }
 
   Future<Map<String, dynamic>?> loadVault() async {
+    if (kIsWeb) return null;
     try {
       final file = await _getLocalFile();
       if (await file.exists()) {
@@ -30,6 +31,7 @@ class LocalStorageService {
   }
 
   Future<void> saveVault(Map<String, dynamic> vaultData) async {
+    if (kIsWeb) return;
     try {
       final file = await _getLocalFile();
       final tempFile = File('${file.path}.tmp');
