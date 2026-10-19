@@ -250,5 +250,69 @@ void main() {
       expect(success, isFalse);
       expect(finance.lastErrorMessage, contains('must be different'));
     });
+
+    test(
+        '11. transferBetweenAccounts rejects NaN, positive infinity, negative infinity, zero, and negative amounts without state mutation',
+        () {
+      final debit = finance.accounts[0];
+      final cash = finance.accounts[1];
+
+      final initialBalances = finance.accounts.map((a) => a.balance).toList();
+      final initialExpenseCount = finance.expenses.length;
+      final initialTotalExpenses = finance.totalExpenses;
+
+      // 1. NaN
+      final nanSuccess = finance.transferBetweenAccounts(
+        fromAccountId: debit.id,
+        toAccountId: cash.id,
+        amount: double.nan,
+      );
+      expect(nanSuccess, isFalse);
+      expect(finance.lastErrorMessage, contains('greater than zero'));
+
+      // 2. Positive infinity
+      final posInfSuccess = finance.transferBetweenAccounts(
+        fromAccountId: debit.id,
+        toAccountId: cash.id,
+        amount: double.infinity,
+      );
+      expect(posInfSuccess, isFalse);
+      expect(finance.lastErrorMessage, contains('greater than zero'));
+
+      // 3. Negative infinity
+      final negInfSuccess = finance.transferBetweenAccounts(
+        fromAccountId: debit.id,
+        toAccountId: cash.id,
+        amount: -double.infinity,
+      );
+      expect(negInfSuccess, isFalse);
+      expect(finance.lastErrorMessage, contains('greater than zero'));
+
+      // 4. Zero
+      final zeroSuccess = finance.transferBetweenAccounts(
+        fromAccountId: debit.id,
+        toAccountId: cash.id,
+        amount: 0.0,
+      );
+      expect(zeroSuccess, isFalse);
+      expect(finance.lastErrorMessage, contains('greater than zero'));
+
+      // 5. Negative amount
+      final negSuccess = finance.transferBetweenAccounts(
+        fromAccountId: debit.id,
+        toAccountId: cash.id,
+        amount: -100.0,
+      );
+      expect(negSuccess, isFalse);
+      expect(finance.lastErrorMessage, contains('greater than zero'));
+
+      // Confirm all account balances remain completely unchanged
+      final currentBalances = finance.accounts.map((a) => a.balance).toList();
+      expect(currentBalances, equals(initialBalances));
+
+      // Confirm transaction counts and totals remain completely unchanged
+      expect(finance.expenses.length, equals(initialExpenseCount));
+      expect(finance.totalExpenses, equals(initialTotalExpenses));
+    });
   });
 }

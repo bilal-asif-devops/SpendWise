@@ -289,6 +289,13 @@ class FinanceProvider with ChangeNotifier {
     String? accountId,
     String? note,
   }) {
+    if (!amount.isFinite || amount.isNaN || amount <= 0) {
+      _lastErrorMessage =
+          "Expense amount must be a finite number greater than zero.";
+      notifyListeners();
+      return;
+    }
+
     final targetAccountId =
         accountId ?? (_accounts.isNotEmpty ? _accounts.first.id : "acc_1");
     final targetAccount = _accounts.firstWhere(
@@ -334,8 +341,9 @@ class FinanceProvider with ChangeNotifier {
     required String toAccountId,
     required double amount,
   }) {
-    if (amount <= 0) {
-      _lastErrorMessage = "Transfer amount must be greater than zero.";
+    if (!amount.isFinite || amount.isNaN || amount <= 0) {
+      _lastErrorMessage =
+          "Transfer amount must be a finite number greater than zero.";
       notifyListeners();
       return false;
     }
