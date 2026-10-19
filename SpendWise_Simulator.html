@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpendWise — Mobile Simulator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+    }
+    body {
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .phone-case {
+      width: 390px;
+      height: 800px;
+      background: #ffffff;
+      border-radius: 46px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.4), 0 0 0 10px #1e293b, 0 0 0 12px #334155;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140px;
+      height: 24px;
+      background: #1e293b;
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+      z-index: 100;
+    }
+    .status-bar {
+      height: 38px;
+      padding: 8px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+      z-index: 10;
+    }
+    .screen-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px 80px;
+      background: #f8fafc;
+      position: relative;
+    }
+    .screen {
+      display: none;
+    }
+    .screen.active {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Hero Card */
+    .hero-card {
+      background: #1A365D;
+      border-radius: 24px;
+      padding: 22px;
+      color: white;
+      box-shadow: 0 10px 25px rgba(26,54,93,0.35);
+      margin-top: 14px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.15);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      color: #10B981;
+      font-weight: 600;
+      float: right;
+    }
+    .hero-title {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 6px;
+    }
+    .hero-amount {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .hero-sub {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    /* Button */
+    .btn-green {
+      width: 100%;
+      height: 50px;
+      background: #10B981;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(16,185,129,0.3);
+      transition: transform 0.1s;
+    }
+    .btn-green:active {
+      transform: scale(0.98);
+    }
+
+    /* Cards */
+    .card-item {
+      background: white;
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .avatar-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      color: white;
+      margin-right: 12px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 20px 0 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Bottom Nav Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 68px;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding-bottom: 8px;
+      z-index: 50;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      gap: 4px;
+    }
+    .nav-item.active {
+      color: #10B981;
+    }
+    .nav-icon {
+      font-size: 20px;
+    }
+
+    /* Modal / Bottom Sheet */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 80;
+      display: none;
+      align-items: flex-end;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+    .modal-sheet {
+      width: 100%;
+      background: white;
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      padding: 20px;
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 15px 0;
+    }
+    .numpad button {
+      height: 44px;
+      border: none;
+      background: #f1f5f9;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      cursor: pointer;
+    }
+    .numpad button:active {
+      background: #e2e8f0;
+    }
+    .category-pills {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+    .cat-pill {
+      flex: 1;
+      padding: 8px 4px;
+      background: #f1f5f9;
+      border-radius: 14px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+    }
+    .cat-pill.selected {
+      background: rgba(16,185,129,0.12);
+      color: #10B981;
+      border-color: #10B981;
+    }
+
+    /* Donut chart simulation */
+    .donut-chart {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: conic-gradient(#10B981 0% 45%, #3B82F6 45% 70%, #F59E0B 70% 88%, #8B5CF6 88% 100%);
+      margin: 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .donut-inner {
+      width: 100px;
+      height: 100px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #1A365D;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="phone-case">
+    <div class="notch"></div>
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>📶 5G 100% 🔋</span>
+    </div>
+
+    <!-- SCREENS WRAPPER -->
+    <div class="screen-container">
+
+      <!-- SCREEN 1: ONBOARDING -->
+      <div id="screen-onboarding" class="screen">
+        <div style="text-align:center; padding: 40px 10px;">
+          <div style="width:70px; height:70px; background:#1A365D; border-radius:20px; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:32px;">💳</div>
+          <h1 style="color:#1A365D; font-size:24px; font-weight:800;">SpendWise</h1>
+          <p style="color:#64748b; font-size:13px; margin: 8px 0 24px;">Smart Budgeting & Subscription Hub</p>
+          <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:12px; margin-bottom:24px; text-align:left;">
+            <label style="font-size:11px; font-weight:700; color:#64748b;">DEFAULT CURRENCY</label>
+            <select id="currency-select" style="width:100%; padding:8px 0; border:none; font-weight:700; font-size:15px; outline:none;" onchange="changeCurrency(this.value)">
+              <option value="$">USD ($)</option>
+              <option value="Rs ">PKR (Rs)</option>
+              <option value="€">EUR (€)</option>
+            </select>
+          </div>
+          <button class="btn-green" onclick="goToScreen('home')">Get Started ➔</button>
+          <p style="font-size:11px; color:#94a3b8; margin-top:12px;">100% Private • Local Offline Storage</p>
+        </div>
+      </div>
+
+      <!-- SCREEN 2: HOME DASHBOARD -->
+      <div id="screen-home" class="screen active">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2 style="font-size:20px; font-weight:800; color:#0f172a;">Hello, Bilal 👋</h2>
+            <p style="font-size:12px; color:#64748b;">Let's make room for what matters.</p>
+          </div>
+          <div style="width:36px; height:36px; border-radius:50%; background:white; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center;">🔔</div>
+        </div>
+
+        <!-- HERO CARD -->
+        <div class="hero-card">
+          <span class="hero-badge">🛡️ Bills Covered</span>
+          <div class="hero-title">Safe to Spend</div>
+          <div class="hero-amount" id="safe-spend-text">$1,420.00</div>
+          <div class="hero-sub">Subscriptions & fixed bills already deducted.</div>
+        </div>
+
+        <button class="btn-green" onclick="openExpenseModal()">+ Add Expense</button>
+
+        <!-- UPCOMING SUBSCRIPTIONS -->
+        <div class="section-title">
+          <span>Upcoming Subscriptions</span>
+          <span style="font-size:12px; color:#10B981; cursor:pointer;" onclick="goToScreen('subs')">View all</span>
+        </div>
+
+        <div class="card-item">
+          <div style="display:flex; align-items:center;">
+            <div class="avatar-icon" style="background:#E50914;">N</div>
+            <div>
+              <div style="font-weight:700; font-size:14px;">Netflix</div>
+              <div style="font-size:11px; color:#F59E0B; font-weight:700;">Due in 2 days</div>
+            </div>
+          </div>
+          <div style="font-weight:800; font-size:15px;" class="price-val" data-usd="15.99">$15.99</div>
+        </div>
+
+        <!-- RECENT EXPENSES -->
+        <div class="section-title">Recent Expenses</div>
+        <div id="expense-list">
+          <div class="card-item">
+            <div style="display:flex; align-items:center;">
+              <div class="avatar-icon" style="background:#f1f5f9; color:#0f172a;">🛒</div>
+              <div>
+                <div style="font-weight:700; font-size:14px;">Groceries</div>
+                <div style="font-size:11px; color:#64748b;">Food & Essentials</div>
+              </div>
+            </div>
+            <div style="font-weight:800; font-size:14px; color:#0f172a;" class="price-val" data-usd="45.00">-$45.00</div>
+          </div>
+          <div class="card-item">
+            <div style="display:flex; align-items:center;">
+              <div class="avatar-icon" style="background:#f1f5f9; color:#0f172a;">☕</div>
+              <div>
+                <div style="font-weight:700; font-size:14px;">Coffee</div>
+                <div style="font-size:11px; color:#64748b;">Food & Drinks</div>
+              </div>
+            </div>
+            <div style="font-weight:800; font-size:14px; color:#0f172a;" class="price-val" data-usd="4.50">-$4.50</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 3: SUBSCRIPTIONS RADAR -->
+      <div id="screen-subs" class="screen">
+        <h2 style="font-size:20px; font-weight:800; color:#0f172a; margin-bottom:12px;">Subscriptions Radar</h2>
+        <div class="hero-card" style="margin-top:0;">
+          <div class="hero-title">Total Monthly Bills</div>
+          <div class="hero-amount" id="total-subs-text">$184.50</div>
+          <div class="hero-sub">Across all 3 active recurring subscriptions.</div>
+        </div>
+
+        <div class="section-title">Active Subscriptions</div>
+        <div class="card-item">
+          <div style="display:flex; align-items:center;">
+            <div class="avatar-icon" style="background:#E50914;">N</div>
+            <div>
+              <div style="font-weight:700; font-size:14px;">Netflix</div>
+              <div style="font-size:11px; color:#F59E0B; font-weight:700;">Renews in 2 days</div>
+            </div>
+          </div>
+          <div style="font-weight:800; font-size:14px;" class="price-val" data-usd="15.99">$15.99/mo</div>
+        </div>
+        <div class="card-item">
+          <div style="display:flex; align-items:center;">
+            <div class="avatar-icon" style="background:#1DB954;">S</div>
+            <div>
+              <div style="font-weight:700; font-size:14px;">Spotify</div>
+              <div style="font-size:11px; color:#10B981; font-weight:700;">Renews in 7 days</div>
+            </div>
+          </div>
+          <div style="font-weight:800; font-size:14px;" class="price-val" data-usd="9.99">$9.99/mo</div>
+        </div>
+        <div class="card-item">
+          <div style="display:flex; align-items:center;">
+            <div class="avatar-icon" style="background:#3B82F6;">G</div>
+            <div>
+              <div style="font-weight:700; font-size:14px;">Gym Membership</div>
+              <div style="font-size:11px; color:#10B981; font-weight:700;">Renews in 12 days</div>
+            </div>
+          </div>
+          <div style="font-weight:800; font-size:14px;" class="price-val" data-usd="45.00">$45.00/mo</div>
+        </div>
+
+        <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:16px; padding:14px; margin-top:14px; display:flex; gap:10px; align-items:center;">
+          <span style="font-size:20px;">🛡️</span>
+          <span style="font-size:11px; color:#0f172a; font-weight:600;">You're one step ahead! 48h advance warning alert is active.</span>
+        </div>
+      </div>
+
+      <!-- SCREEN 4: ANALYTICS -->
+      <div id="screen-analytics" class="screen">
+        <h2 style="font-size:20px; font-weight:800; color:#0f172a;">Spending Analytics</h2>
+        <div style="background:white; border-radius:20px; padding:20px; border:1px solid #e2e8f0; margin-top:14px;">
+          <div style="font-size:14px; font-weight:700; text-align:center;">Spending Breakdown</div>
+          <div class="donut-chart">
+            <div class="donut-inner">
+              <span id="donut-amount" style="font-size:18px;">$1,280</span>
+              <span style="font-size:10px; color:#64748b; font-weight:600;">October</span>
+            </div>
+          </div>
+          <div style="font-size:12px; display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>🟢 Food & Dining (45%)</span>
+            <strong class="price-val" data-usd="512">$512</strong>
+          </div>
+          <div style="font-size:12px; display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>🔵 Shopping (25%)</span>
+            <strong class="price-val" data-usd="320">$320</strong>
+          </div>
+          <div style="font-size:12px; display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>🟠 Transport (18%)</span>
+            <strong class="price-val" data-usd="256">$256</strong>
+          </div>
+          <div style="font-size:12px; display:flex; justify-content:space-between;">
+            <span>🟣 Subscriptions (12%)</span>
+            <strong class="price-val" data-usd="192">$192</strong>
+          </div>
+        </div>
+
+        <div class="card-item" style="margin-top:16px;">
+          <div style="font-size:24px; margin-right:12px;">🌱</div>
+          <div style="flex:1;">
+            <div style="font-size:12px; color:#64748b;">Monthly Savings</div>
+            <div style="font-size:14px; font-weight:800;">$320.00 / $400 goal</div>
+            <div style="width:100%; height:6px; background:#f1f5f9; border-radius:4px; margin-top:6px; overflow:hidden;">
+              <div style="width:80%; height:100%; background:#10B981;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 5: SETTINGS -->
+      <div id="screen-settings" class="screen">
+        <h2 style="font-size:20px; font-weight:800; color:#0f172a;">Settings</h2>
+        <div class="card-item" style="margin-top:14px;">
+          <div class="avatar-icon" style="background:#1A365D;">B</div>
+          <div style="flex:1;">
+            <div style="font-weight:800; font-size:15px;">Bilal</div>
+            <div style="font-size:11px; color:#64748b;">bilal.uet@student.taxila.edu</div>
+            <span style="font-size:10px; background:rgba(16,185,129,0.15); color:#10B981; padding:2px 6px; border-radius:4px; font-weight:700;">Free Tier • Local Storage</span>
+          </div>
+        </div>
+
+        <div class="section-title">Preferences & Security</div>
+        <div style="background:white; border-radius:18px; border:1px solid #e2e8f0; overflow:hidden;">
+          <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9;">
+            <span style="font-size:13px; font-weight:600;">Push Notifications (48h Alert)</span>
+            <input type="checkbox" checked style="accent-color:#10B981; transform:scale(1.3);">
+          </div>
+          <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9;">
+            <span style="font-size:13px; font-weight:600;">Biometric Lock (Fingerprint)</span>
+            <input type="checkbox" checked style="accent-color:#10B981; transform:scale(1.3);">
+          </div>
+          <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:13px; font-weight:600;">Export Report (CSV/PDF)</span>
+            <span style="font-size:16px; cursor:pointer;" onclick="alert('Financial Statement Exported to Downloads!')">📥</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MODAL BOTTOM SHEET (ADD EXPENSE) -->
+    <div id="expense-modal" class="modal-overlay">
+      <div class="modal-sheet">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:800; font-size:16px;">Quick add expense</span>
+          <span style="cursor:pointer; font-size:18px; color:#64748b;" onclick="closeExpenseModal()">✕</span>
+        </div>
+        <div style="text-align:center; font-size:38px; font-weight:800; color:#1A365D; margin:10px 0;" id="input-amount">$0.00</div>
+        
+        <div class="category-pills">
+          <div class="cat-pill selected" onclick="selectCat(this, '🍔 Food')">🍔 Food</div>
+          <div class="cat-pill" onclick="selectCat(this, '🛍️ Shopping')">🛍️ Shopping</div>
+          <div class="cat-pill" onclick="selectCat(this, '🚗 Transit')">🚗 Transit</div>
+          <div class="cat-pill" onclick="selectCat(this, '💡 Bills')">💡 Bills</div>
+        </div>
+
+        <div class="numpad">
+          <button onclick="pressNum('1')">1</button>
+          <button onclick="pressNum('2')">2</button>
+          <button onclick="pressNum('3')">3</button>
+          <button onclick="pressNum('4')">4</button>
+          <button onclick="pressNum('5')">5</button>
+          <button onclick="pressNum('6')">6</button>
+          <button onclick="pressNum('7')">7</button>
+          <button onclick="pressNum('8')">8</button>
+          <button onclick="pressNum('9')">9</button>
+          <button onclick="pressNum('.')">.</button>
+          <button onclick="pressNum('0')">0</button>
+          <button onclick="backspace()">⌫</button>
+        </div>
+
+        <button class="btn-green" onclick="confirmSaveExpense()">Save Expense</button>
+      </div>
+    </div>
+
+    <!-- BOTTOM APP BAR -->
+    <div class="bottom-nav">
+      <div class="nav-item active" onclick="goToScreen('home', this)">
+        <span class="nav-icon">🏠</span>
+        <span>Home</span>
+      </div>
+      <div class="nav-item" onclick="goToScreen('subs', this)">
+        <span class="nav-icon">🔁</span>
+        <span>Subscriptions</span>
+      </div>
+      <div class="nav-item" onclick="goToScreen('analytics', this)">
+        <span class="nav-icon">📊</span>
+        <span>Analytics</span>
+      </div>
+      <div class="nav-item" onclick="goToScreen('settings', this)">
+        <span class="nav-icon">⚙️</span>
+        <span>Settings</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let curSymbol = "$";
+    let safeBalance = 1420.00;
+    let inputVal = "0.00";
+    let activeCategory = "🍔 Food";
+
+    function goToScreen(name, el) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-' + name).classList.add('active');
+      if (el) {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+      }
+    }
+
+    function openExpenseModal() {
+      inputVal = "0.00";
+      document.getElementById('input-amount').innerText = curSymbol + inputVal;
+      document.getElementById('expense-modal').classList.add('open');
+    }
+
+    function closeExpenseModal() {
+      document.getElementById('expense-modal').classList.remove('open');
+    }
+
+    function selectCat(pill, cat) {
+      document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('selected'));
+      pill.classList.add('selected');
+      activeCategory = cat;
+    }
+
+    function pressNum(digit) {
+      if (inputVal === "0.00" || inputVal === "0") {
+        inputVal = digit;
+      } else {
+        inputVal += digit;
+      }
+      document.getElementById('input-amount').innerText = curSymbol + inputVal;
+    }
+
+    function backspace() {
+      if (inputVal.length > 1) {
+        inputVal = inputVal.substring(0, inputVal.length - 1);
+      } else {
+        inputVal = "0.00";
+      }
+      document.getElementById('input-amount').innerText = curSymbol + inputVal;
+    }
+
+    function confirmSaveExpense() {
+      const amt = parseFloat(inputVal);
+      if (amt && amt > 0) {
+        safeBalance -= amt;
+        document.getElementById('safe-spend-text').innerText = curSymbol + safeBalance.toFixed(2);
+        
+        const list = document.getElementById('expense-list');
+        const newItem = document.createElement('div');
+        newItem.className = 'card-item';
+        newItem.innerHTML = `
+          <div style="display:flex; align-items:center;">
+            <div class="avatar-icon" style="background:#f1f5f9; color:#0f172a;">${activeCategory.split(' ')[0]}</div>
+            <div>
+              <div style="font-weight:700; font-size:14px;">${activeCategory.split(' ')[1]}</div>
+              <div style="font-size:11px; color:#64748b;">Today • Just now</div>
+            </div>
+          </div>
+          <div style="font-weight:800; font-size:14px; color:#0f172a;">-${curSymbol}${amt.toFixed(2)}</div>
+        `;
+        list.prepend(newItem);
+        closeExpenseModal();
+      }
+    }
+
+    function changeCurrency(sym) {
+      curSymbol = sym;
+      document.getElementById('safe-spend-text').innerText = curSymbol + safeBalance.toFixed(2);
+      document.getElementById('total-subs-text').innerText = curSymbol + "184.50";
+      document.getElementById('donut-amount').innerText = curSymbol + "1,280";
+      document.querySelectorAll('.price-val').forEach(el => {
+        const val = el.getAttribute('data-usd');
+        el.innerText = curSymbol + val;
+      });
+    }
+  </script>
+</body>
+</html>
