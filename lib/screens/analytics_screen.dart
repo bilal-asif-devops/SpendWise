@@ -61,14 +61,14 @@ class AnalyticsScreen extends StatelessWidget {
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        SizedBox(
+                        const SizedBox(
                           width: 170,
                           height: 170,
                           child: CircularProgressIndicator(
                             value: 0.68,
                             strokeWidth: 20,
                             backgroundColor: AppColors.chipBackground,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
+                            valueColor: AlwaysStoppedAnimation<Color>(
                                 AppColors.accentGreen),
                           ),
                         ),
@@ -121,7 +121,7 @@ class AnalyticsScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.accentGreen.withOpacity(0.12),
+                        color: AppColors.accentGreen.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Icon(Icons.savings_outlined,
@@ -177,7 +177,7 @@ class AnalyticsScreen extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 4,
                       offset: const Offset(0, 2))
                 ]

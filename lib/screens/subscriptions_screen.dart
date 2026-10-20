@@ -129,8 +129,10 @@ class SubscriptionsScreen extends StatelessWidget {
                                     horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: sub.isDueSoon
-                                      ? AppColors.alertAmber.withOpacity(0.15)
-                                      : AppColors.accentGreen.withOpacity(0.12),
+                                      ? AppColors.alertAmber
+                                          .withValues(alpha: 0.15)
+                                      : AppColors.accentGreen
+                                          .withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -167,10 +169,10 @@ class SubscriptionsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.accentGreen.withOpacity(0.1),
+                  color: AppColors.accentGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border:
-                      Border.all(color: AppColors.accentGreen.withOpacity(0.3)),
+                  border: Border.all(
+                      color: AppColors.accentGreen.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
                   children: [

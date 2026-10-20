@@ -5,14 +5,16 @@ import 'storage_service.dart';
 class FinanceProvider with ChangeNotifier {
   final LocalStorageService _storageService;
 
-  String _userName = "Bilal";
-  String _userEmail = "bilal@example.com";
+  String _userName = "Guest User";
+  String _userEmail = "guest@spendwise.local";
   String _currency = "\$";
   double _monthlySavingsGoal = 245.50;
   bool _notificationsEnabled = true;
   bool _biometricsEnabled = true;
   bool _isDarkMode = false;
   bool _isInitialized = false;
+  bool _hasCompletedOnboarding = false;
+  Map<String, dynamic> _onboardingData = {};
   String? _lastErrorMessage;
 
   List<Account> _accounts = [];
@@ -28,6 +30,8 @@ class FinanceProvider with ChangeNotifier {
 
   // Getters
   bool get isInitialized => _isInitialized;
+  bool get hasCompletedOnboarding => _hasCompletedOnboarding;
+  Map<String, dynamic> get onboardingData => Map.unmodifiable(_onboardingData);
   String? get lastErrorMessage => _lastErrorMessage;
   String get userName => _userName;
   String get userEmail => _userEmail;
@@ -504,6 +508,48 @@ class FinanceProvider with ChangeNotifier {
     _persistToStorage();
   }
 
+  void completeOnboarding({
+    String? name,
+    String? email,
+    Map<String, dynamic>? surveyResponses,
+    bool clearSampleExpenses = false,
+  }) {
+    _hasCompletedOnboarding = true;
+    if (name != null && name.trim().isNotEmpty) {
+      _userName = name.trim();
+    }
+    if (email != null && email.trim().isNotEmpty) {
+      _userEmail = email.trim();
+    }
+    if (surveyResponses != null) {
+      _onboardingData = Map<String, dynamic>.from(surveyResponses);
+    }
+    if (clearSampleExpenses) {
+      _expenses.clear();
+      _recalculateBudgets();
+    }
+    notifyListeners();
+    _persistToStorage();
+  }
+
+  void resetOnboarding() {
+    _hasCompletedOnboarding = false;
+    _onboardingData.clear();
+    _userName = "Guest User";
+    _userEmail = "guest@spendwise.local";
+    notifyListeners();
+    _persistToStorage();
+  }
+
+  void startFreshGuest({Map<String, dynamic>? surveyResponses}) {
+    completeOnboarding(
+      name: "Guest User",
+      email: "guest@spendwise.local",
+      surveyResponses: surveyResponses,
+      clearSampleExpenses: true,
+    );
+  }
+
   // Local Storage Vault Persistence
   Future<void> _persistToStorage() async {
     final vaultData = _toVaultMap();
@@ -522,6 +568,8 @@ class FinanceProvider with ChangeNotifier {
         'notificationsEnabled': _notificationsEnabled,
         'biometricsEnabled': _biometricsEnabled,
         'isDarkMode': _isDarkMode,
+        'hasCompletedOnboarding': _hasCompletedOnboarding,
+        'onboardingData': _onboardingData,
       },
       'accounts': _accounts.map((a) => a.toJson()).toList(),
       'expenses': _expenses.map((e) => e.toJson()).toList(),
@@ -543,6 +591,10 @@ class FinanceProvider with ChangeNotifier {
       _biometricsEnabled =
           p['biometricsEnabled'] as bool? ?? _biometricsEnabled;
       _isDarkMode = p['isDarkMode'] as bool? ?? _isDarkMode;
+      _hasCompletedOnboarding = p['hasCompletedOnboarding'] as bool? ?? false;
+      if (p['onboardingData'] != null && p['onboardingData'] is Map) {
+        _onboardingData = Map<String, dynamic>.from(p['onboardingData'] as Map);
+      }
     }
 
     if (vault['accounts'] != null) {

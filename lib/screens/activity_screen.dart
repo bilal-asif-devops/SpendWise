@@ -44,7 +44,7 @@ class ActivityScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.accentGreen.withOpacity(0.3),
+                      color: AppColors.accentGreen.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -75,7 +75,7 @@ class ActivityScreen extends StatelessWidget {
                     Text(
                       "Last month you earned 254 ${finance.currency} more than you spent which means your reserve raised to 6 704 ${finance.currency}.",
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 12.5,
                           height: 1.35),
                     ),
@@ -116,15 +116,15 @@ class ActivityScreen extends StatelessWidget {
                       children: [
                         Text("Aug",
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
+                                color: Colors.white.withValues(alpha: 0.7),
                                 fontSize: 10)),
                         Text("Oct",
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
+                                color: Colors.white.withValues(alpha: 0.7),
                                 fontSize: 10)),
                         Text("Dec",
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
+                                color: Colors.white.withValues(alpha: 0.7),
                                 fontSize: 10)),
                       ],
                     ),
@@ -185,7 +185,7 @@ class ActivityScreen extends StatelessWidget {
                           Text(
                             "Yesterday you spent 0 ${finance.currency} on Food & Drinks which is 50 ${finance.currency} below your average.",
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                                 fontSize: 12),
                           ),
                         ],
@@ -377,7 +377,7 @@ class ActivityScreen extends StatelessWidget {
             height: 36,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-                color: color.withOpacity(0.15), shape: BoxShape.circle),
+                color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
             child: Text(icon, style: const TextStyle(fontSize: 16)),
           ),
           const SizedBox(width: 12),

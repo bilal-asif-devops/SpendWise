@@ -13,6 +13,10 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final finance = Provider.of<FinanceProvider>(context);
 
+    if (finance.expenses.isEmpty) {
+      return _buildEmptyHomeView(context, finance);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -768,6 +772,342 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyHomeView(BuildContext context, FinanceProvider finance) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
+          "Home",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textDark,
+          ),
+        ),
+        actions: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: AppColors.accentGreen.withValues(alpha: 0.18),
+            child: Text(
+              finance.userName.isNotEmpty
+                  ? finance.userName[0].toUpperCase()
+                  : "G",
+              style: const TextStyle(
+                color: AppColors.accentGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 12),
+
+              // Group Wallet Preview Graphic matching Spendee Frame 70
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceWhite,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Card header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              "Group Wallet",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                "+ €773",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            _buildAvatarBubble("👩", const Color(0xFFFFD1D1)),
+                            const SizedBox(width: 3),
+                            _buildAvatarBubble("👨", const Color(0xFFD1E8FF)),
+                            const SizedBox(width: 3),
+                            _buildAvatarBubble("🧑", const Color(0xFFFFF0D1)),
+                            const SizedBox(width: 3),
+                            _buildAvatarBubble("+", const Color(0xFFF1F5F9)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Donut graphic representation
+                    Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.accentGreen.withValues(alpha: 0.25),
+                          width: 14,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.pie_chart_outline_rounded,
+                          size: 38,
+                          color: AppColors.accentGreen,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Floating preview cards
+                    _buildFloatingPreviewCard(
+                      icon: "🍿",
+                      title: "Entertainment",
+                      wallet: "Personal Wallet · Netflix",
+                      amount: "-€12.90",
+                      isNegative: true,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildFloatingPreviewCard(
+                      icon: "🏡",
+                      title: "Rent",
+                      wallet: "Personal Wallet",
+                      amount: "-€650.00",
+                      isNegative: true,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildFloatingPreviewCard(
+                      icon: "🚗",
+                      title: "Insurance",
+                      wallet: "Personal Wallet",
+                      amount: "-€85.00",
+                      isNegative: true,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Headline matching Frame 70
+              const Text(
+                "Clear view of your finances",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textDark,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Subtitle
+              const Text(
+                "Get a clear view of your spending, make better decisions, and save for what matters.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: AppColors.textMuted,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // Button 1: Connect Bank Account (Primary Emerald)
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentGreen,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  icon: const Icon(Icons.link_rounded, size: 20),
+                  label: const Text(
+                    "Connect Bank Account",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                  onPressed: () => _showBankConnectionNotice(context),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Button 2: Add Expense Manually (Mint-tinted Secondary)
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE8F5E9),
+                    foregroundColor: AppColors.accentGreen,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 22),
+                  label: const Text(
+                    "Add Expense Manually",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (ctx) => const QuickAddExpenseSheet(),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarBubble(String label, Color color) {
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      child: Center(
+        child: Text(label, style: const TextStyle(fontSize: 11)),
+      ),
+    );
+  }
+
+  Widget _buildFloatingPreviewCard({
+    required String icon,
+    required String title,
+    required String wallet,
+    required String amount,
+    required bool isNegative,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                Text(
+                  wallet,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            amount,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color:
+                  isNegative ? const Color(0xFFEF4444) : AppColors.accentGreen,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBankConnectionNotice(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.account_balance_rounded, color: AppColors.primaryNavy),
+            SizedBox(width: 8),
+            Text("Bank Connection"),
+          ],
+        ),
+        content: const Text(
+          "Bank directory search, Open Banking integration (Plaid/Salt Edge), and offline Pakistani bank statement importing (Meezan, HBL, UBL) are scheduled for Phase 5.\n\nIn Phase 2, you can log expenses and explore budgeting manually using the button below.",
+          style: TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Got It"),
+          ),
+        ],
       ),
     );
   }
