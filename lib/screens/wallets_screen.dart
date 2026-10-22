@@ -4,6 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/finance_provider.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import 'create_account_sheet.dart';
+import 'import_statement_screen.dart';
 
 class WalletsScreen extends StatelessWidget {
   const WalletsScreen({super.key});
@@ -30,7 +32,19 @@ class WalletsScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
+            key: const Key('wallets_import_statement_button'),
+            icon: const Icon(Icons.file_upload_outlined,
+                color: AppColors.primaryNavy),
+            tooltip: "Import Statement",
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ImportStatementScreen()),
+            ),
+          ),
+          IconButton(
+            key: const Key('wallets_add_account_button'),
             icon: const Icon(Icons.add, color: AppColors.primaryNavy),
+            tooltip: "Add Account",
             onPressed: () => _showAddAccountDialog(context),
           ),
         ],
@@ -53,7 +67,7 @@ class WalletsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "LIQUID CASH · SAFE-TO-SPEND ENGINE",
+                      "LIQUID CASH Â· SAFE-TO-SPEND ENGINE",
                       style: TextStyle(
                           fontSize: 11,
                           color: Colors.white70,
@@ -212,16 +226,42 @@ class WalletsScreen extends StatelessWidget {
                             fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.accentGreen,
-                          side: const BorderSide(color: AppColors.accentGreen),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: () => _showAddAccountDialog(context),
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text("Create Wallet"),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.accentGreen,
+                              side: const BorderSide(
+                                  color: AppColors.accentGreen),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => _showAddAccountDialog(context),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text("Create Wallet"),
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primaryNavy,
+                              side: const BorderSide(
+                                  color: AppColors.primaryNavy),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ImportStatementScreen()),
+                            ),
+                            icon: const Icon(Icons.file_upload_outlined,
+                                size: 18),
+                            label: const Text("Import Statement"),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -268,12 +308,62 @@ class WalletsScreen extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 12, color: AppColors.textMuted),
                         ),
-                        trailing: Text(
-                          "${finance.currency}${acc.balance.toStringAsFixed(0)}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppColors.primaryNavy),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "${finance.currency}${acc.balance.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: AppColors.primaryNavy),
+                            ),
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert,
+                                  size: 18, color: AppColors.textMuted),
+                              onSelected: (val) {
+                                if (val == 'import') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ImportStatementScreen(
+                                        preselectedAccountId: acc.id,
+                                      ),
+                                    ),
+                                  );
+                                } else if (val == 'delete') {
+                                  _confirmDeleteAccount(context, acc);
+                                }
+                              },
+                              itemBuilder: (ctx) => [
+                                const PopupMenuItem(
+                                  value: 'import',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.file_upload_outlined,
+                                          size: 18,
+                                          color: AppColors.primaryNavy),
+                                      SizedBox(width: 8),
+                                      Text('Import Statement'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.delete_outline,
+                                          size: 18, color: AppColors.alertRed),
+                                      SizedBox(width: 8),
+                                      Text('Delete Wallet',
+                                          style: TextStyle(
+                                              color: AppColors.alertRed)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -379,7 +469,55 @@ class WalletsScreen extends StatelessWidget {
                 style:
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              const Icon(Icons.credit_card, color: AppColors.primaryNavy),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.credit_card, color: AppColors.primaryNavy),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert,
+                        size: 18, color: AppColors.textMuted),
+                    onSelected: (val) {
+                      if (val == 'import') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ImportStatementScreen(
+                              preselectedAccountId: card.id,
+                            ),
+                          ),
+                        );
+                      } else if (val == 'delete') {
+                        _confirmDeleteAccount(context, card);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(
+                        value: 'import',
+                        child: Row(
+                          children: [
+                            Icon(Icons.file_upload_outlined,
+                                size: 18, color: AppColors.primaryNavy),
+                            SizedBox(width: 8),
+                            Text('Import Statement'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline,
+                                size: 18, color: AppColors.alertRed),
+                            SizedBox(width: 8),
+                            Text('Delete Card',
+                                style: TextStyle(color: AppColors.alertRed)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -424,83 +562,35 @@ class WalletsScreen extends StatelessWidget {
   }
 
   void _showAddAccountDialog(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    final balanceCtrl = TextEditingController();
-    final last4Ctrl = TextEditingController();
-    AccountType selectedType = AccountType.debit;
+    CreateAccountSheet.show(context);
+  }
 
+  void _confirmDeleteAccount(BuildContext context, Account acc) {
+    final finance = Provider.of<FinanceProvider>(context, listen: false);
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: const Text("Add New Wallet"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                      labelText: "Account Name (e.g. Revolut)")),
-              TextField(
-                  controller: balanceCtrl,
-                  decoration:
-                      const InputDecoration(labelText: "Opening Balance"),
-                  keyboardType: TextInputType.number),
-              TextField(
-                  controller: last4Ctrl,
-                  decoration: const InputDecoration(
-                      labelText: "Last 4 Digits (optional)"),
-                  keyboardType: TextInputType.number),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<AccountType>(
-                initialValue: selectedType,
-                decoration: const InputDecoration(labelText: "Account Type"),
-                items: const [
-                  DropdownMenuItem(
-                      value: AccountType.debit,
-                      child: Text("Debit Card / Bank")),
-                  DropdownMenuItem(
-                      value: AccountType.cash, child: Text("Cash Reserve")),
-                  DropdownMenuItem(
-                      value: AccountType.credit,
-                      child: Text("Credit Card (Liability)")),
-                ],
-                onChanged: (val) => setState(() => selectedType = val!),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Cancel")),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentGreen,
-                  foregroundColor: Colors.white),
-              onPressed: () {
-                final balance = double.tryParse(balanceCtrl.text) ?? 0.0;
-                if (nameCtrl.text.isNotEmpty) {
-                  Provider.of<FinanceProvider>(context, listen: false)
-                      .addAccount(
-                    Account(
-                      id: "acc_${DateTime.now().millisecondsSinceEpoch}",
-                      name: nameCtrl.text,
-                      type: selectedType,
-                      balance: balance,
-                      creditLimit:
-                          selectedType == AccountType.credit ? 2000.0 : 0.0,
-                      last4: last4Ctrl.text.isNotEmpty ? last4Ctrl.text : null,
-                      icon: selectedType == AccountType.cash ? "💵" : "💳",
-                      isLiquid: selectedType != AccountType.credit,
-                    ),
-                  );
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text("Create"),
-            ),
-          ],
+      builder: (ctx) => AlertDialog(
+        title: Text("Delete '${acc.name}'?"),
+        content: const Text(
+          "Are you sure you want to remove this account? This will remove the account from your dashboard.",
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.alertRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              finance.deleteAccount(acc.id);
+              Navigator.pop(ctx);
+            },
+            child: const Text("Delete"),
+          ),
+        ],
       ),
     );
   }

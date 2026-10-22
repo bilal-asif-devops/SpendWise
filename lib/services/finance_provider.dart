@@ -1,6 +1,27 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import 'storage_service.dart';
+import 'statement_importer.dart';
+
+class StatementImportSummary {
+  final int totalRows;
+  final int importedCount;
+  final int duplicateCount;
+  final int invalidCount;
+  final double netBalanceChange;
+  final String accountName;
+  final List<String> errorMessages;
+
+  const StatementImportSummary({
+    required this.totalRows,
+    required this.importedCount,
+    required this.duplicateCount,
+    required this.invalidCount,
+    required this.netBalanceChange,
+    required this.accountName,
+    this.errorMessages = const [],
+  });
+}
 
 class FinanceProvider with ChangeNotifier {
   final LocalStorageService _storageService;
@@ -621,10 +642,187 @@ class FinanceProvider with ChangeNotifier {
     _persistToStorage();
   }
 
-  void addAccount(Account newAccount) {
+  bool addAccount(Account newAccount) {
+    if (newAccount.name.trim().isEmpty) {
+      _lastErrorMessage = "Account name cannot be empty.";
+      notifyListeners();
+      return false;
+    }
+    if (!newAccount.balance.isFinite || newAccount.balance.isNaN) {
+      _lastErrorMessage = "Opening balance must be a valid finite number.";
+      notifyListeners();
+      return false;
+    }
+    if (newAccount.type != AccountType.credit && newAccount.balance < 0) {
+      _lastErrorMessage = "Asset account opening balance cannot be negative.";
+      notifyListeners();
+      return false;
+    }
+    if (newAccount.type == AccountType.credit) {
+      if (!newAccount.creditLimit.isFinite || newAccount.creditLimit.isNaN) {
+        _lastErrorMessage = "Credit limit must be a valid finite number.";
+        notifyListeners();
+        return false;
+      }
+      if (newAccount.creditLimit < 0) {
+        _lastErrorMessage = "Credit limit cannot be negative.";
+        notifyListeners();
+        return false;
+      }
+      if (newAccount.balance < 0) {
+        _lastErrorMessage = "Credit card liability cannot be negative.";
+        notifyListeners();
+        return false;
+      }
+    }
+
     _accounts.add(newAccount);
+    _lastErrorMessage = null;
     notifyListeners();
     _persistToStorage();
+    return true;
+  }
+
+  bool deleteAccount(String accountId) {
+    final idx = _accounts.indexWhere((a) => a.id == accountId);
+    if (idx == -1) return false;
+    _accounts.removeAt(idx);
+    _lastErrorMessage = null;
+    notifyListeners();
+    _persistToStorage();
+    return true;
+  }
+
+  StatementImportSummary importStatementTransactions({
+    required String accountId,
+    required List<ImportedTransactionRecord> transactions,
+  }) {
+    final accIndex = _accounts.indexWhere((a) => a.id == accountId);
+    if (accIndex == -1) {
+      throw ArgumentError("Account with id '$accountId' was not found.");
+    }
+    final targetAccount = _accounts[accIndex];
+
+    // Build fingerprint set for existing transactions in this account
+    final existingHashes = <String>{};
+    for (final exp in _expenses) {
+      if (exp.accountId == accountId) {
+        if (exp.importHash != null && exp.importHash!.isNotEmpty) {
+          existingHashes.add(exp.importHash!);
+        }
+        existingHashes.add(
+          StatementImporter.generateFingerprint(
+            accountId: exp.accountId,
+            date: exp.date,
+            description: exp.title,
+            amount: exp.amount,
+            type: exp.type,
+          ),
+        );
+      }
+    }
+
+    int importedCount = 0;
+    int duplicateCount = 0;
+    int invalidCount = 0;
+    double netBalanceChange = 0.0;
+    final errorMessages = <String>[];
+    final newExpenses = <Expense>[];
+
+    double currentBalance = targetAccount.balance;
+
+    for (final rec in transactions) {
+      if (!rec.isValid) {
+        invalidCount++;
+        if (rec.errorMessage != null) {
+          errorMessages.add("Row ${rec.rowIndex}: ${rec.errorMessage}");
+        }
+        continue;
+      }
+      if (!rec.amount.isFinite || rec.amount <= 0 || rec.amount.isNaN) {
+        invalidCount++;
+        errorMessages
+            .add("Row ${rec.rowIndex}: Non-positive or non-finite amount");
+        continue;
+      }
+
+      final fp = rec.importHash.isNotEmpty
+          ? rec.importHash
+          : StatementImporter.generateFingerprint(
+              accountId: accountId,
+              date: rec.date ?? DateTime.now(),
+              description: rec.description,
+              amount: rec.amount,
+              type: rec.type,
+            );
+
+      if (existingHashes.contains(fp)) {
+        duplicateCount++;
+        continue;
+      }
+
+      existingHashes.add(fp);
+
+      final exp = Expense(
+        id: "stmt_${DateTime.now().microsecondsSinceEpoch}_$importedCount",
+        title: rec.description,
+        category: rec.category.isNotEmpty
+            ? rec.category
+            : (rec.type == TransactionType.income ? "Salary" : "Other"),
+        amount: rec.amount,
+        date: rec.date ?? DateTime.now(),
+        icon: _getCategoryIcon(rec.category),
+        accountId: targetAccount.id,
+        walletName: targetAccount.name,
+        currency: targetAccount.currency,
+        type: rec.type,
+        note: "Imported transaction",
+        importHash: fp,
+      );
+
+      newExpenses.add(exp);
+      importedCount++;
+
+      // Update account balance
+      if (targetAccount.type == AccountType.credit) {
+        // For credit cards: expense increases liability, income decreases liability
+        if (rec.type == TransactionType.expense) {
+          currentBalance += rec.amount;
+          netBalanceChange += rec.amount;
+        } else if (rec.type == TransactionType.income) {
+          currentBalance -= rec.amount;
+          netBalanceChange -= rec.amount;
+        }
+      } else {
+        // For asset accounts (cash, debit): expense decreases asset, income increases asset
+        if (rec.type == TransactionType.expense) {
+          currentBalance -= rec.amount;
+          netBalanceChange -= rec.amount;
+        } else if (rec.type == TransactionType.income) {
+          currentBalance += rec.amount;
+          netBalanceChange += rec.amount;
+        }
+      }
+    }
+
+    if (newExpenses.isNotEmpty) {
+      _expenses.addAll(newExpenses);
+      _expenses.sort((a, b) => b.date.compareTo(a.date));
+      _accounts[accIndex] = targetAccount.copyWith(balance: currentBalance);
+      _recalculateBudgets();
+      notifyListeners();
+      _persistToStorage();
+    }
+
+    return StatementImportSummary(
+      totalRows: transactions.length,
+      importedCount: importedCount,
+      duplicateCount: duplicateCount,
+      invalidCount: invalidCount,
+      netBalanceChange: netBalanceChange,
+      accountName: targetAccount.name,
+      errorMessages: errorMessages,
+    );
   }
 
   void updateCurrency(String newCurr) {

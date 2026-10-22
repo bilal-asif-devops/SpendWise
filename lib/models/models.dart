@@ -14,6 +14,7 @@ class Account {
   final bool isLiquid;
   final bool isExcludedFromSafeToSpend;
   final bool isSample;
+  final String currency;
 
   Account({
     required this.id,
@@ -27,6 +28,7 @@ class Account {
     this.isLiquid = true,
     this.isExcludedFromSafeToSpend = false,
     this.isSample = false,
+    this.currency = 'USD',
   });
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +43,7 @@ class Account {
         'isLiquid': isLiquid,
         'isExcludedFromSafeToSpend': isExcludedFromSafeToSpend,
         'isSample': isSample,
+        'currency': currency,
       };
 
   factory Account.fromJson(Map<String, dynamic> json) => Account(
@@ -61,6 +64,7 @@ class Account {
         isExcludedFromSafeToSpend:
             json['isExcludedFromSafeToSpend'] as bool? ?? false,
         isSample: json['isSample'] as bool? ?? false,
+        currency: json['currency'] as String? ?? 'USD',
       );
 
   Account copyWith({
@@ -75,6 +79,7 @@ class Account {
     bool? isLiquid,
     bool? isExcludedFromSafeToSpend,
     bool? isSample,
+    String? currency,
   }) {
     return Account(
       id: id ?? this.id,
@@ -89,6 +94,7 @@ class Account {
       isExcludedFromSafeToSpend:
           isExcludedFromSafeToSpend ?? this.isExcludedFromSafeToSpend,
       isSample: isSample ?? this.isSample,
+      currency: currency ?? this.currency,
     );
   }
 }
@@ -112,6 +118,7 @@ class Expense {
   final String currency;
   final double? exchangeRate;
   final List<String> tags;
+  final String? importHash;
 
   Expense({
     required this.id,
@@ -130,6 +137,7 @@ class Expense {
     this.currency = 'USD',
     this.exchangeRate,
     this.tags = const [],
+    this.importHash,
   });
 
   Map<String, dynamic> toJson() => {
@@ -149,6 +157,7 @@ class Expense {
         'currency': currency,
         'exchangeRate': exchangeRate,
         'tags': tags,
+        'importHash': importHash,
       };
 
   factory Expense.fromJson(Map<String, dynamic> json) => Expense(
@@ -175,6 +184,7 @@ class Expense {
                 ?.map((e) => e.toString())
                 .toList() ??
             const [],
+        importHash: json['importHash'] as String?,
       );
 
   Expense copyWith({
@@ -194,6 +204,7 @@ class Expense {
     String? currency,
     double? exchangeRate,
     List<String>? tags,
+    String? importHash,
   }) {
     return Expense(
       id: id ?? this.id,
@@ -212,6 +223,7 @@ class Expense {
       currency: currency ?? this.currency,
       exchangeRate: exchangeRate ?? this.exchangeRate,
       tags: tags ?? this.tags,
+      importHash: importHash ?? this.importHash,
     );
   }
 }
