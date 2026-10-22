@@ -93,7 +93,10 @@ void main() {
 
   group('Phase 1: Financial Math & Balance Consistency Tests', () {
     test('Safe-to-Spend formula produces exact expected balance', () {
-      final provider = FinanceProvider(storageService: MockStorageService());
+      final provider = FinanceProvider(
+        storageService: MockStorageService(),
+        seedSampleData: true,
+      );
 
       // Liquid balance: Meezan Bank ($1,400) + Visa Debit ($450) = $1,850
       expect(provider.totalLiquidBalance, equals(1850.00));
@@ -110,7 +113,10 @@ void main() {
     test(
         'Transfer between wallets modifies balances without distorting expenses',
         () {
-      final provider = FinanceProvider(storageService: MockStorageService());
+      final provider = FinanceProvider(
+        storageService: MockStorageService(),
+        seedSampleData: true,
+      );
       final initialExpenses = provider.totalExpenses;
 
       final acc1 = provider.accounts[0]; // Meezan Bank
@@ -133,7 +139,10 @@ void main() {
     });
 
     test('Adding an expense debits paying account balance', () {
-      final provider = FinanceProvider(storageService: MockStorageService());
+      final provider = FinanceProvider(
+        storageService: MockStorageService(),
+        seedSampleData: true,
+      );
       final payingAccount = provider.accounts[1]; // Visa Debit
       final initialBalance = payingAccount.balance;
 

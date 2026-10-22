@@ -93,7 +93,10 @@ void main() {
     });
 
     test('4. startFreshGuest resets expenses for clean empty Home state', () {
-      final finance = FinanceProvider(storageService: MockStorageService());
+      final finance = FinanceProvider(
+        storageService: MockStorageService(),
+        seedSampleData: true,
+      );
       expect(finance.expenses.isNotEmpty, isTrue); // initial sample data
 
       finance.startFreshGuest(surveyResponses: {'sentiment': 'unsure'});
@@ -101,6 +104,9 @@ void main() {
       expect(finance.hasCompletedOnboarding, isTrue);
       expect(finance.userName, equals('Guest User'));
       expect(finance.expenses, isEmpty);
+      expect(finance.accounts, isEmpty);
+      expect(finance.subscriptions, isEmpty);
+      expect(finance.budgets, isEmpty);
     });
 
     test('5. resetOnboarding reverts completion state to false', () {

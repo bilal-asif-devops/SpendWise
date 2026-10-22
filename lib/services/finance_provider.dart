@@ -8,7 +8,7 @@ class FinanceProvider with ChangeNotifier {
   String _userName = "Guest User";
   String _userEmail = "guest@spendwise.local";
   String _currency = "\$";
-  double _monthlySavingsGoal = 245.50;
+  double _monthlySavingsGoal = 0.0;
   bool _notificationsEnabled = true;
   bool _biometricsEnabled = true;
   bool _isDarkMode = false;
@@ -22,9 +22,13 @@ class FinanceProvider with ChangeNotifier {
   List<Subscription> _subscriptions = [];
   List<Budget> _budgets = [];
 
-  FinanceProvider({LocalStorageService? storageService})
-      : _storageService = storageService ?? LocalStorageService() {
-    _seedDefaultSampleData();
+  FinanceProvider({
+    LocalStorageService? storageService,
+    bool seedSampleData = false,
+  }) : _storageService = storageService ?? LocalStorageService() {
+    if (seedSampleData) {
+      seedDefaultSampleData();
+    }
     _initializeData();
   }
 
@@ -108,7 +112,8 @@ class FinanceProvider with ChangeNotifier {
     _isInitialized = true;
   }
 
-  void _seedDefaultSampleData() {
+  void seedDefaultSampleData() {
+    _monthlySavingsGoal = 245.50;
     _accounts = [
       Account(
         id: "acc_1",
@@ -119,6 +124,7 @@ class FinanceProvider with ChangeNotifier {
         icon: "🏛️",
         color: const Color(0xFF1A365D),
         isLiquid: true,
+        isSample: true,
       ),
       Account(
         id: "acc_2",
@@ -129,6 +135,7 @@ class FinanceProvider with ChangeNotifier {
         icon: "💳",
         color: const Color(0xFF3182CE),
         isLiquid: true,
+        isSample: true,
       ),
       Account(
         id: "acc_3",
@@ -139,6 +146,7 @@ class FinanceProvider with ChangeNotifier {
         color: const Color(0xFF10B981),
         isLiquid: false,
         isExcludedFromSafeToSpend: true,
+        isSample: true,
       ),
       Account(
         id: "acc_4",
@@ -150,6 +158,7 @@ class FinanceProvider with ChangeNotifier {
         icon: "💳",
         color: const Color(0xFFE53E3E),
         isLiquid: false,
+        isSample: true,
       ),
     ];
 
@@ -241,9 +250,48 @@ class FinanceProvider with ChangeNotifier {
         startDate: DateTime(DateTime.now().year, DateTime.now().month, 1),
         endDate: DateTime(DateTime.now().year, DateTime.now().month + 1, 0),
         icon: "🏡",
+        isSample: true,
       ),
     ];
     _recalculateBudgets();
+  }
+
+  static bool _isLegacySampleAccount(String id, String name) {
+    if (id == "acc_1" && name == "Meezan Bank") return true;
+    if (id == "acc_2" && name == "Visa Debit") return true;
+    if (id == "acc_3" && name == "Cash") return true;
+    if (id == "acc_4" && name == "Mastercard") return true;
+    return false;
+  }
+
+  static bool _isLegacySampleSubscription(String id, String name) {
+    if (id == "sub_1" || id == "sub_2" || id == "sub_3") return true;
+    if (name == "Netflix" || name == "Spotify" || name == "Gym") return true;
+    return false;
+  }
+
+  static bool _isLegacySampleExpense(String id) {
+    return id == "exp_1" || id == "exp_2" || id == "exp_3";
+  }
+
+  static bool _isLegacySampleBudget(String id, String name) {
+    return id == "bgt_1" && name == "Home Budget";
+  }
+
+  void purgeSampleData() {
+    _accounts
+        .removeWhere((a) => a.isSample || _isLegacySampleAccount(a.id, a.name));
+    _subscriptions.removeWhere(
+        (s) => s.isSample || _isLegacySampleSubscription(s.id, s.name));
+    _expenses.removeWhere((e) => e.isSample || _isLegacySampleExpense(e.id));
+    _budgets
+        .removeWhere((b) => b.isSample || _isLegacySampleBudget(b.id, b.name));
+    if (_monthlySavingsGoal == 245.50 && _accounts.isEmpty) {
+      _monthlySavingsGoal = 0.0;
+    }
+    _recalculateBudgets();
+    notifyListeners();
+    _persistToStorage();
   }
 
   // Financial Calculations & Budgets
@@ -300,23 +348,28 @@ class FinanceProvider with ChangeNotifier {
       return;
     }
 
-    final targetAccountId =
-        accountId ?? (_accounts.isNotEmpty ? _accounts.first.id : "acc_1");
-    final targetAccount = _accounts.firstWhere(
-      (a) => a.id == targetAccountId,
-      orElse: () => _accounts.first,
-    );
+    Account? targetAccount;
+    if (accountId != null) {
+      final idx = _accounts.indexWhere((a) => a.id == accountId);
+      if (idx != -1) {
+        targetAccount = _accounts[idx];
+      }
+    } else if (_accounts.isNotEmpty) {
+      targetAccount = _accounts.first;
+    }
 
-    // Deduct from paying account
-    final updatedAccount = targetAccount.copyWith(
-      balance: targetAccount.type == AccountType.credit
-          ? targetAccount.balance + amount // credit liability increases
-          : targetAccount.balance - amount, // asset balance decreases
-    );
+    if (targetAccount != null) {
+      // Deduct from paying account
+      final updatedAccount = targetAccount.copyWith(
+        balance: targetAccount.type == AccountType.credit
+            ? targetAccount.balance + amount // credit liability increases
+            : targetAccount.balance - amount, // asset balance decreases
+      );
 
-    final accIndex = _accounts.indexWhere((a) => a.id == targetAccountId);
-    if (accIndex != -1) {
-      _accounts[accIndex] = updatedAccount;
+      final accIndex = _accounts.indexWhere((a) => a.id == targetAccount!.id);
+      if (accIndex != -1) {
+        _accounts[accIndex] = updatedAccount;
+      }
     }
 
     _expenses.insert(
@@ -328,8 +381,8 @@ class FinanceProvider with ChangeNotifier {
         amount: amount,
         date: DateTime.now(),
         icon: _getCategoryIcon(category),
-        accountId: targetAccountId,
-        walletName: targetAccount.name,
+        accountId: targetAccount?.id ?? "cash_wallet",
+        walletName: targetAccount?.name ?? "Cash",
         note: note,
         isSample: false,
       ),
@@ -449,12 +502,15 @@ class FinanceProvider with ChangeNotifier {
     required int days,
     String? accountId,
   }) {
-    final targetAccountId =
-        accountId ?? (_accounts.isNotEmpty ? _accounts.first.id : "acc_1");
-    final targetAccount = _accounts.firstWhere(
-      (a) => a.id == targetAccountId,
-      orElse: () => _accounts.first,
-    );
+    Account? targetAccount;
+    if (accountId != null) {
+      final idx = _accounts.indexWhere((a) => a.id == accountId);
+      if (idx != -1) {
+        targetAccount = _accounts[idx];
+      }
+    } else if (_accounts.isNotEmpty) {
+      targetAccount = _accounts.first;
+    }
 
     _subscriptions.add(
       Subscription(
@@ -466,14 +522,21 @@ class FinanceProvider with ChangeNotifier {
         iconLetter: name.isNotEmpty ? name[0].toUpperCase() : "S",
         daysRemaining: days,
         isDueSoon: days <= 3,
-        accountId: targetAccountId,
-        walletName: targetAccount.name,
+        accountId: targetAccount?.id ?? "cash_wallet",
+        walletName: targetAccount?.name ?? "Cash",
         isSample: false,
       ),
     );
 
     _subscriptions.sort((a, b) => a.daysRemaining.compareTo(b.daysRemaining));
 
+    notifyListeners();
+    _persistToStorage();
+  }
+
+  void addBudget(Budget newBudget) {
+    _budgets.add(newBudget);
+    _recalculateBudgets();
     notifyListeners();
     _persistToStorage();
   }
@@ -513,6 +576,7 @@ class FinanceProvider with ChangeNotifier {
     String? email,
     Map<String, dynamic>? surveyResponses,
     bool clearSampleExpenses = false,
+    bool clearAllData = false,
   }) {
     _hasCompletedOnboarding = true;
     if (name != null && name.trim().isNotEmpty) {
@@ -524,9 +588,12 @@ class FinanceProvider with ChangeNotifier {
     if (surveyResponses != null) {
       _onboardingData = Map<String, dynamic>.from(surveyResponses);
     }
-    if (clearSampleExpenses) {
+    if (clearAllData || clearSampleExpenses) {
       _expenses.clear();
-      _recalculateBudgets();
+      _accounts.clear();
+      _subscriptions.clear();
+      _budgets.clear();
+      _monthlySavingsGoal = 0.0;
     }
     notifyListeners();
     _persistToStorage();
@@ -547,6 +614,7 @@ class FinanceProvider with ChangeNotifier {
       email: "guest@spendwise.local",
       surveyResponses: surveyResponses,
       clearSampleExpenses: true,
+      clearAllData: true,
     );
   }
 
@@ -600,24 +668,29 @@ class FinanceProvider with ChangeNotifier {
     if (vault['accounts'] != null) {
       _accounts = (vault['accounts'] as List)
           .map((a) => Account.fromJson(a as Map<String, dynamic>))
+          .where((a) => !a.isSample && !_isLegacySampleAccount(a.id, a.name))
           .toList();
     }
 
     if (vault['expenses'] != null) {
       _expenses = (vault['expenses'] as List)
           .map((e) => Expense.fromJson(e as Map<String, dynamic>))
+          .where((e) => !e.isSample && !_isLegacySampleExpense(e.id))
           .toList();
     }
 
     if (vault['subscriptions'] != null) {
       _subscriptions = (vault['subscriptions'] as List)
           .map((s) => Subscription.fromJson(s as Map<String, dynamic>))
+          .where(
+              (s) => !s.isSample && !_isLegacySampleSubscription(s.id, s.name))
           .toList();
     }
 
     if (vault['budgets'] != null) {
       _budgets = (vault['budgets'] as List)
           .map((b) => Budget.fromJson(b as Map<String, dynamic>))
+          .where((b) => !b.isSample && !_isLegacySampleBudget(b.id, b.name))
           .toList();
       _recalculateBudgets();
     }

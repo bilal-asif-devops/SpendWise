@@ -10,6 +10,76 @@ class AnalyticsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final finance = Provider.of<FinanceProvider>(context);
 
+    if (finance.expenses.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text("Spending Analytics"),
+        ),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGreen.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.pie_chart_outline_rounded,
+                      size: 36,
+                      color: AppColors.accentGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "No spending data yet",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Log transactions manually or connect your accounts to view categorical spending breakdowns.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textMuted,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Compute dynamic category totals from actual expenses
+    final Map<String, double> categoryTotals = {};
+    for (final exp in finance.expenses) {
+      categoryTotals[exp.category] =
+          (categoryTotals[exp.category] ?? 0.0) + exp.amount;
+    }
+    final totalSpent = finance.totalExpenses;
+
+    final categoryColors = {
+      "Food": const Color(0xFF10B981),
+      "Shopping": const Color(0xFF3B82F6),
+      "Transport": const Color(0xFFF59E0B),
+      "Utilities": const Color(0xFF8B5CF6),
+      "Entertainment": const Color(0xFFEC4899),
+      "Health": const Color(0xFF06B6D4),
+    };
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -39,7 +109,7 @@ class AnalyticsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // Visual Donut Chart Simulation matching Figma Screen 5
+              // Visual Donut Chart Breakdown
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(22),
@@ -65,7 +135,7 @@ class AnalyticsScreen extends StatelessWidget {
                           width: 170,
                           height: 170,
                           child: CircularProgressIndicator(
-                            value: 0.68,
+                            value: 1.0,
                             strokeWidth: 20,
                             backgroundColor: AppColors.chipBackground,
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -76,9 +146,9 @@ class AnalyticsScreen extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              "${finance.currency}${finance.totalExpenses.toStringAsFixed(0)}",
+                              "${finance.currency}${totalSpent.toStringAsFixed(2)}",
                               style: const TextStyle(
-                                fontSize: 26,
+                                fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primaryNavy,
                               ),
@@ -94,21 +164,22 @@ class AnalyticsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    // Category Legend Rows
-                    _buildLegendRow(
-                        "Food & Groceries", "45%", const Color(0xFF10B981)),
-                    _buildLegendRow("Shopping & Essentials", "25%",
-                        const Color(0xFF3B82F6)),
-                    _buildLegendRow(
-                        "Transport", "18%", const Color(0xFFF59E0B)),
-                    _buildLegendRow(
-                        "Subscriptions", "12%", const Color(0xFF8B5CF6)),
+                    // Dynamic Category Legend Rows
+                    ...categoryTotals.entries.map((entry) {
+                      final pct = totalSpent > 0
+                          ? ((entry.value / totalSpent) * 100).round()
+                          : 0;
+                      final color =
+                          categoryColors[entry.key] ?? AppColors.primaryNavy;
+                      return _buildLegendRow(entry.key, "$pct%", color,
+                          entry.value, finance.currency);
+                    }),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Monthly Savings Target Card from Figma
+              // Monthly Savings Target Card
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -137,22 +208,31 @@ class AnalyticsScreen extends StatelessWidget {
                             style: TextStyle(
                                 color: AppColors.textMuted, fontSize: 12),
                           ),
-                          Text(
-                            "${finance.currency}320.00 / ${finance.currency}400 goal",
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: const LinearProgressIndicator(
-                              value: 0.8,
-                              minHeight: 6,
-                              backgroundColor: AppColors.chipBackground,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.accentGreen),
+                          if (finance.monthlySavingsGoal > 0) ...[
+                            Text(
+                              "${finance.currency}0.00 / ${finance.currency}${finance.monthlySavingsGoal.toStringAsFixed(0)} goal",
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: const LinearProgressIndicator(
+                                value: 0.0,
+                                minHeight: 6,
+                                backgroundColor: AppColors.chipBackground,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.accentGreen),
+                              ),
+                            ),
+                          ] else
+                            const Text(
+                              "No savings goal configured.",
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textDark,
+                                  fontWeight: FontWeight.w600),
+                            ),
                         ],
                       ),
                     ),
@@ -195,7 +275,8 @@ class AnalyticsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLegendRow(String label, String percent, Color dotColor) {
+  Widget _buildLegendRow(String label, String percent, Color dotColor,
+      [double? amount, String? currency]) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
@@ -214,11 +295,25 @@ class AnalyticsScreen extends StatelessWidget {
                       const TextStyle(fontSize: 13, color: AppColors.textDark)),
             ],
           ),
-          Text(percent,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: AppColors.textDark)),
+          Row(
+            children: [
+              if (amount != null && currency != null) ...[
+                Text(
+                  "$currency${amount.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(percent,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: AppColors.textDark)),
+            ],
+          ),
         ],
       ),
     );

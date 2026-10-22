@@ -75,94 +75,138 @@ class SubscriptionsScreen extends StatelessWidget {
               const SizedBox(height: 12),
 
               // Subscriptions List
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: finance.subscriptions.length,
-                separatorBuilder: (ctx, idx) => const SizedBox(height: 12),
-                itemBuilder: (ctx, idx) {
-                  final sub = finance.subscriptions[idx];
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceWhite,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.borderLight),
-                    ),
-                    child: Row(
-                      children: [
-                        // Logo Avatar
-                        Container(
-                          width: 46,
-                          height: 46,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: _getBrandColor(sub.name),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Text(
-                            sub.iconLetter,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
+              if (finance.subscriptions.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceWhite,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.autorenew_rounded,
+                          size: 38, color: AppColors.textMuted),
+                      const SizedBox(height: 10),
+                      const Text(
+                        "No recurring subscriptions tracked yet.",
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        "Add your recurring bills to stay ahead of upcoming renewals.",
+                        textAlign: TextAlign.center,
+                        style:
+                            TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.accentGreen,
+                          side: const BorderSide(color: AppColors.accentGreen),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () => _showAddSubscriptionDialog(context),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text("Add Subscription"),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: finance.subscriptions.length,
+                  separatorBuilder: (ctx, idx) => const SizedBox(height: 12),
+                  itemBuilder: (ctx, idx) {
+                    final sub = finance.subscriptions[idx];
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceWhite,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Row(
+                        children: [
+                          // Logo Avatar
+                          Container(
+                            width: 46,
+                            height: 46,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: _getBrandColor(sub.name),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              sub.iconLetter,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        // Details
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                sub.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: AppColors.textDark,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: sub.isDueSoon
-                                      ? AppColors.alertAmber
-                                          .withValues(alpha: 0.15)
-                                      : AppColors.accentGreen
-                                          .withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  "Renews in ${sub.daysRemaining} days",
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: sub.isDueSoon
-                                        ? AppColors.alertAmber
-                                        : AppColors.accentGreen,
+                          const SizedBox(width: 14),
+                          // Details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sub.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: AppColors.textDark,
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: sub.isDueSoon
+                                        ? AppColors.alertAmber
+                                            .withValues(alpha: 0.15)
+                                        : AppColors.accentGreen
+                                            .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    "Renews in ${sub.daysRemaining} days",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: sub.isDueSoon
+                                          ? AppColors.alertAmber
+                                          : AppColors.accentGreen,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        // Price
-                        Text(
-                          "${finance.currency}${sub.amount.toStringAsFixed(2)}/mo",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: AppColors.textDark,
+                          // Price
+                          Text(
+                            "${finance.currency}${sub.amount.toStringAsFixed(2)}/mo",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppColors.textDark,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               const SizedBox(height: 20),
 
               // Smart Proactive Alert Box from Figma

@@ -84,70 +84,85 @@ class WalletsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // Spendee Total Wealth Spline Curve Graphic (Aug to Jan)
-                    SizedBox(
-                      height: 70,
-                      child: LineChart(
-                        LineChartData(
-                          gridData: const FlGridData(show: false),
-                          titlesData: const FlTitlesData(show: false),
-                          borderData: FlBorderData(show: false),
-                          minX: 0,
-                          maxX: 5,
-                          minY: 0,
-                          maxY: 6,
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: const [
-                                FlSpot(0, 1.2),
-                                FlSpot(1, 1.5),
-                                FlSpot(2, 4.0),
-                                FlSpot(3, 3.2),
-                                FlSpot(4, 5.2),
-                                FlSpot(5, 5.0),
-                              ],
-                              isCurved: true,
-                              color: AppColors.accentGreen,
-                              barWidth: 3,
-                              isStrokeCapRound: true,
-                              dotData: FlDotData(
-                                show: true,
-                                checkToShowDot: (spot, barData) => spot.x == 5,
-                                getDotPainter:
-                                    (spot, percent, barData, index) =>
-                                        FlDotCirclePainter(
-                                            radius: 4,
-                                            color: AppColors.accentGreen,
-                                            strokeWidth: 2,
-                                            strokeColor: Colors.white),
+                    // Total Wealth Trajectory Spline Curve
+                    if (finance.accounts.isEmpty)
+                      Container(
+                        height: 70,
+                        alignment: Alignment.center,
+                        child: Text(
+                          "Wealth trajectory will plot here as you record balances.",
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 12,
+                          ),
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: 70,
+                        child: LineChart(
+                          LineChartData(
+                            gridData: const FlGridData(show: false),
+                            titlesData: const FlTitlesData(show: false),
+                            borderData: FlBorderData(show: false),
+                            minX: 0,
+                            maxX: 5,
+                            minY: 0,
+                            maxY: 6,
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: const [
+                                  FlSpot(0, 1.2),
+                                  FlSpot(1, 1.5),
+                                  FlSpot(2, 4.0),
+                                  FlSpot(3, 3.2),
+                                  FlSpot(4, 5.2),
+                                  FlSpot(5, 5.0),
+                                ],
+                                isCurved: true,
+                                color: AppColors.accentGreen,
+                                barWidth: 3,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(
+                                  show: true,
+                                  checkToShowDot: (spot, barData) =>
+                                      spot.x == 5,
+                                  getDotPainter:
+                                      (spot, percent, barData, index) =>
+                                          FlDotCirclePainter(
+                                              radius: 4,
+                                              color: AppColors.accentGreen,
+                                              strokeWidth: 2,
+                                              strokeColor: Colors.white),
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: AppColors.accentGreen
+                                      .withValues(alpha: 0.15),
+                                ),
                               ),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: AppColors.accentGreen
-                                    .withValues(alpha: 0.15),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("Aug 2026",
-                            style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                fontSize: 10)),
-                        Text("Oct 2026",
-                            style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                fontSize: 10)),
-                        Text("Jan 2027 (Projected)",
-                            style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                fontSize: 10)),
-                      ],
-                    ),
+                    if (finance.accounts.isNotEmpty)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Aug 2026",
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: 10)),
+                          Text("Oct 2026",
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: 10)),
+                          Text("Jan 2027 (Projected)",
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: 10)),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -165,7 +180,7 @@ class WalletsScreen extends StatelessWidget {
                         color: AppColors.textDark),
                   ),
                   Text(
-                    "${finance.liquidAccounts.length} accounts",
+                    "${finance.liquidAccounts.length} ${finance.liquidAccounts.length == 1 ? 'account' : 'accounts'}",
                     style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.accentGreen,
@@ -175,57 +190,95 @@ class WalletsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceWhite,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: finance.liquidAccounts.length,
-                  separatorBuilder: (ctx, idx) =>
-                      const Divider(height: 1, indent: 64, endIndent: 16),
-                  itemBuilder: (ctx, idx) {
-                    final acc = finance.liquidAccounts[idx];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      leading: Container(
-                        width: 44,
-                        height: 44,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.accentGreen.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
+              if (finance.liquidAccounts.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceWhite,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.account_balance_wallet_outlined,
+                          size: 36, color: AppColors.textMuted),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "No liquid accounts or cash wallets created yet.",
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.accentGreen,
+                          side: const BorderSide(color: AppColors.accentGreen),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: Text(acc.icon,
-                            style: const TextStyle(fontSize: 20)),
+                        onPressed: () => _showAddAccountDialog(context),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text("Create Wallet"),
                       ),
-                      title: Text(
-                        acc.name,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      subtitle: Text(
-                        acc.last4 != null
-                            ? "Debit ·· ${acc.last4} · included"
-                            : "Cash · included",
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textMuted),
-                      ),
-                      trailing: Text(
-                        "${finance.currency}${acc.balance.toStringAsFixed(0)}",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: AppColors.primaryNavy),
-                      ),
-                    );
-                  },
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceWhite,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: finance.liquidAccounts.length,
+                    separatorBuilder: (ctx, idx) =>
+                        const Divider(height: 1, indent: 64, endIndent: 16),
+                    itemBuilder: (ctx, idx) {
+                      final acc = finance.liquidAccounts[idx];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color:
+                                AppColors.accentGreen.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(acc.icon,
+                              style: const TextStyle(fontSize: 20)),
+                        ),
+                        title: Text(
+                          acc.name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        subtitle: Text(
+                          acc.last4 != null
+                              ? "Debit ·· ${acc.last4} · included"
+                              : "Cash · included",
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textMuted),
+                        ),
+                        trailing: Text(
+                          "${finance.currency}${acc.balance.toStringAsFixed(0)}",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: AppColors.primaryNavy),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
               const SizedBox(height: 24),
 
               // Credit Cards Section
@@ -240,7 +293,7 @@ class WalletsScreen extends StatelessWidget {
                         color: AppColors.textDark),
                   ),
                   Text(
-                    "${finance.creditAccounts.length} card",
+                    "${finance.creditAccounts.length} ${finance.creditAccounts.length == 1 ? 'card' : 'cards'}",
                     style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.alertRed,
@@ -254,8 +307,22 @@ class WalletsScreen extends StatelessWidget {
                 ...finance.creditAccounts.map(
                     (card) => _buildCreditCardItem(context, card, finance)),
               ] else
-                const Text("No credit cards added",
-                    style: TextStyle(color: AppColors.textMuted)),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceWhite,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "No credit cards added.",
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    ),
+                  ),
+                ),
 
               const SizedBox(height: 14),
 

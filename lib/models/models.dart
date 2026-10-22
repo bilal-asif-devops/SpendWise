@@ -13,6 +13,7 @@ class Account {
   final Color color;
   final bool isLiquid;
   final bool isExcludedFromSafeToSpend;
+  final bool isSample;
 
   Account({
     required this.id,
@@ -25,6 +26,7 @@ class Account {
     this.color = const Color(0xFF1A365D),
     this.isLiquid = true,
     this.isExcludedFromSafeToSpend = false,
+    this.isSample = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -38,6 +40,7 @@ class Account {
         'color': color.toARGB32(),
         'isLiquid': isLiquid,
         'isExcludedFromSafeToSpend': isExcludedFromSafeToSpend,
+        'isSample': isSample,
       };
 
   factory Account.fromJson(Map<String, dynamic> json) => Account(
@@ -57,6 +60,7 @@ class Account {
         isLiquid: json['isLiquid'] as bool? ?? true,
         isExcludedFromSafeToSpend:
             json['isExcludedFromSafeToSpend'] as bool? ?? false,
+        isSample: json['isSample'] as bool? ?? false,
       );
 
   Account copyWith({
@@ -70,6 +74,7 @@ class Account {
     Color? color,
     bool? isLiquid,
     bool? isExcludedFromSafeToSpend,
+    bool? isSample,
   }) {
     return Account(
       id: id ?? this.id,
@@ -83,6 +88,7 @@ class Account {
       isLiquid: isLiquid ?? this.isLiquid,
       isExcludedFromSafeToSpend:
           isExcludedFromSafeToSpend ?? this.isExcludedFromSafeToSpend,
+      isSample: isSample ?? this.isSample,
     );
   }
 }
@@ -211,6 +217,7 @@ class Budget {
   final DateTime startDate;
   final DateTime endDate;
   final String icon;
+  final bool isSample;
 
   Budget({
     required this.id,
@@ -221,6 +228,7 @@ class Budget {
     required this.startDate,
     required this.endDate,
     this.icon = '🏡',
+    this.isSample = false,
   });
 
   double get percentageSpent =>
@@ -237,6 +245,7 @@ class Budget {
         'startDate': startDate.toIso8601String(),
         'endDate': endDate.toIso8601String(),
         'icon': icon,
+        'isSample': isSample,
       };
 
   factory Budget.fromJson(Map<String, dynamic> json) => Budget(
@@ -250,6 +259,7 @@ class Budget {
         endDate: DateTime.tryParse(json['endDate'] as String? ?? '') ??
             DateTime.now().add(const Duration(days: 30)),
         icon: json['icon'] as String? ?? '🏡',
+        isSample: json['isSample'] as bool? ?? false,
       );
 
   Budget copyWith({
@@ -261,6 +271,7 @@ class Budget {
     DateTime? startDate,
     DateTime? endDate,
     String? icon,
+    bool? isSample,
   }) {
     return Budget(
       id: id ?? this.id,
@@ -271,6 +282,7 @@ class Budget {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       icon: icon ?? this.icon,
+      isSample: isSample ?? this.isSample,
     );
   }
 }

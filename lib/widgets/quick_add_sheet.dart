@@ -79,7 +79,7 @@ class _QuickAddExpenseSheetState extends State<QuickAddExpenseSheet> {
 
     final finance = Provider.of<FinanceProvider>(context, listen: false);
     final accountId = _selectedAccountId ??
-        (finance.accounts.isNotEmpty ? finance.accounts.first.id : "acc_1");
+        (finance.accounts.isNotEmpty ? finance.accounts.first.id : null);
 
     finance.addExpense(
       title: "$_selectedCategory Expense",

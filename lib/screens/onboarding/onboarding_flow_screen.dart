@@ -78,16 +78,13 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
 
   void _finishAsGuest() {
     final finance = Provider.of<FinanceProvider>(context, listen: false);
-    finance.completeOnboarding(
-      name: "Guest User",
-      email: "guest@spendwise.local",
+    finance.startFreshGuest(
       surveyResponses: {
         'sentiment': _selectedSentiment,
         'goals': _selectedGoals.toList(),
         'habit': _selectedHabit,
         'remindersEnabled': _remindersEnabled,
       },
-      clearSampleExpenses: true,
     );
 
     Navigator.pushReplacement(

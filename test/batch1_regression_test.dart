@@ -21,7 +21,10 @@ void main() {
   late FinanceProvider finance;
 
   setUp(() {
-    finance = FinanceProvider(storageService: MockStorageService());
+    finance = FinanceProvider(
+      storageService: MockStorageService(),
+      seedSampleData: true,
+    );
   });
 
   group('Batch 1: Credit Card Bill Payment Logic', () {

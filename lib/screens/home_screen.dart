@@ -186,71 +186,97 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              SizedBox(
-                height: 100,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: finance.accounts.length,
-                  separatorBuilder: (ctx, idx) => const SizedBox(width: 12),
-                  itemBuilder: (ctx, idx) {
-                    final acc = finance.accounts[idx];
-                    return Container(
-                      width: 145,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceWhite,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.borderLight),
+              if (finance.accounts.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceWhite,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.account_balance_wallet_outlined,
+                          color: AppColors.textMuted, size: 20),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "No wallets added yet. Tap Wallets tab to add cash or bank accounts.",
+                          style: TextStyle(
+                              fontSize: 12.5, color: AppColors.textMuted),
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  acc.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold),
+                    ],
+                  ),
+                )
+              else
+                SizedBox(
+                  height: 100,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: finance.accounts.length,
+                    separatorBuilder: (ctx, idx) => const SizedBox(width: 12),
+                    itemBuilder: (ctx, idx) {
+                      final acc = finance.accounts[idx];
+                      return Container(
+                        width: 145,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceWhite,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    acc.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
                                 ),
+                                Text(acc.icon,
+                                    style: const TextStyle(fontSize: 13)),
+                              ],
+                            ),
+                            Text(
+                              "${finance.currency}${acc.balance.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryNavy,
                               ),
-                              Text(acc.icon,
-                                  style: const TextStyle(fontSize: 13)),
-                            ],
-                          ),
-                          Text(
-                            "${finance.currency}${acc.balance.toStringAsFixed(0)}",
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryNavy,
                             ),
-                          ),
-                          Text(
-                            acc.isExcludedFromSafeToSpend
-                                ? "Reserved · excluded"
-                                : (acc.type == AccountType.credit
-                                    ? "Liability owed"
-                                    : "Liquid cash"),
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              color: acc.isExcludedFromSafeToSpend
-                                  ? AppColors.alertAmber
-                                  : AppColors.textMuted,
-                              fontWeight: FontWeight.w500,
+                            Text(
+                              acc.isExcludedFromSafeToSpend
+                                  ? "Reserved · excluded"
+                                  : (acc.type == AccountType.credit
+                                      ? "Liability owed"
+                                      : "Liquid cash"),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: acc.isExcludedFromSafeToSpend
+                                    ? AppColors.alertAmber
+                                    : AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
               const SizedBox(height: 18),
 
               // Action Buttons Row: [+ Expense] [+ Sub] [Transfer]

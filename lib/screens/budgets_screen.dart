@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../models/models.dart';
 import '../services/finance_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -10,11 +11,89 @@ class BudgetsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final finance = Provider.of<FinanceProvider>(context);
-    final budget = finance.budgets.isNotEmpty ? finance.budgets.first : null;
 
-    final double spent =
-        budget != null ? finance.calculateBudgetSpent(budget) : 0.0;
-    final double target = budget?.targetAmount ?? 560.00;
+    if (finance.budgets.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text("Budgets",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline,
+                  color: AppColors.primaryNavy),
+              onPressed: () => _showAddBudgetDialog(context),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGreen.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text("🏡", style: TextStyle(fontSize: 32)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "No budgets set yet",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Set monthly spending limits for categories or discretionary spending to stay on track.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textMuted,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 14),
+                    ),
+                    onPressed: () => _showAddBudgetDialog(context),
+                    icon: const Icon(Icons.add, size: 20),
+                    label: const Text(
+                      "Create a Budget",
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final budget = finance.budgets.first;
+
+    final double spent = finance.calculateBudgetSpent(budget);
+    final double target = budget.targetAmount;
     final double percentage = target > 0 ? (spent / target) : 0.0;
     final double clampedFactor = percentage.clamp(0.001, 1.0);
     final int displayPercent = (percentage * 100).round();
@@ -35,9 +114,7 @@ class BudgetsScreen extends StatelessWidget {
         title: Row(
           children: [
             Text(
-              budget != null
-                  ? "${budget.name} ${budget.icon}"
-                  : "Home Budget 🏡",
+              "${budget.name} ${budget.icon}",
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19),
             ),
           ],
@@ -292,16 +369,10 @@ class BudgetsScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                            budget != null
-                                ? _formatDate(budget.startDate)
-                                : "Sept 1, 2026",
+                        Text(_formatDate(budget.startDate),
                             style: const TextStyle(
                                 fontSize: 11, color: AppColors.textMuted)),
-                        Text(
-                            budget != null
-                                ? _formatDate(budget.endDate)
-                                : "Sept 30, 2026",
+                        Text(_formatDate(budget.endDate),
                             style: const TextStyle(
                                 fontSize: 11, color: AppColors.textMuted)),
                       ],
@@ -469,5 +540,85 @@ class BudgetsScreen extends StatelessWidget {
       "Dec"
     ];
     return "${months[dt.month - 1]} ${dt.day}, ${dt.year}";
+  }
+
+  void _showAddBudgetDialog(BuildContext context) {
+    final nameCtrl = TextEditingController(text: "Monthly Budget");
+    final targetCtrl = TextEditingController(text: "500.00");
+    String selectedCategory = "General Discretionary";
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text("Create New Budget"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: "Budget Name"),
+              ),
+              TextField(
+                controller: targetCtrl,
+                decoration:
+                    const InputDecoration(labelText: "Target Limit (\$)"),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedCategory,
+                decoration: const InputDecoration(labelText: "Category"),
+                items: const [
+                  DropdownMenuItem(
+                      value: "General Discretionary",
+                      child: Text("General Discretionary (All)")),
+                  DropdownMenuItem(value: "Food", child: Text("Food & Dining")),
+                  DropdownMenuItem(
+                      value: "Shopping", child: Text("Shopping & Goods")),
+                  DropdownMenuItem(
+                      value: "Transport", child: Text("Transport & Travel")),
+                ],
+                onChanged: (val) => setState(() => selectedCategory = val!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentGreen,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                final target = double.tryParse(targetCtrl.text);
+                if (target == null || target <= 0) return;
+                final now = DateTime.now();
+                Provider.of<FinanceProvider>(context, listen: false).addBudget(
+                  Budget(
+                    id: "bgt_${DateTime.now().millisecondsSinceEpoch}",
+                    name: nameCtrl.text.isNotEmpty
+                        ? nameCtrl.text
+                        : "Monthly Budget",
+                    category: selectedCategory,
+                    targetAmount: target,
+                    spentAmount: 0.0,
+                    startDate: DateTime(now.year, now.month, 1),
+                    endDate: DateTime(now.year, now.month + 1, 0),
+                    icon: "🏡",
+                    isSample: false,
+                  ),
+                );
+                Navigator.pop(ctx);
+              },
+              child: const Text("Create"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
