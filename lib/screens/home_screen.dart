@@ -347,7 +347,15 @@ class HomeScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(16)),
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                         ),
-                        onPressed: () => _showTransferDialog(context),
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (ctx) => const QuickAddExpenseSheet(
+                                initialMode: TransactionType.transfer),
+                          );
+                        },
                         icon: const Icon(Icons.swap_horiz,
                             size: 18, color: AppColors.primaryNavy),
                         label: const Text("Transfer",
@@ -526,11 +534,15 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          "-${finance.currency}${item.amount.toStringAsFixed(2)}",
-                          style: const TextStyle(
+                          item.type == TransactionType.income
+                              ? "+${finance.currency}${item.amount.toStringAsFixed(2)}"
+                              : "-${finance.currency}${item.amount.toStringAsFixed(2)}",
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
-                            color: AppColors.textDark,
+                            color: item.type == TransactionType.income
+                                ? AppColors.accentGreen
+                                : AppColors.textDark,
                           ),
                         ),
                       ],
@@ -696,105 +708,6 @@ class HomeScreen extends StatelessWidget {
                 }
               },
               child: const Text("Add"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showTransferDialog(BuildContext context) {
-    final finance = Provider.of<FinanceProvider>(context, listen: false);
-    if (finance.accounts.length < 2) return;
-
-    String fromId = finance.accounts.first.id;
-    String toId = finance.accounts[1].id;
-    final amountCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text("Transfer Between Wallets"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: fromId,
-                decoration: const InputDecoration(labelText: "From Wallet"),
-                items: finance.accounts
-                    .map((a) => DropdownMenuItem(
-                        value: a.id,
-                        child: Text(
-                            "${a.name} (${finance.currency}${a.balance.toStringAsFixed(0)})")))
-                    .toList(),
-                onChanged: (val) => setState(() => fromId = val!),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                initialValue: toId,
-                decoration: const InputDecoration(labelText: "To Wallet"),
-                items: finance.accounts
-                    .map((a) => DropdownMenuItem(
-                        value: a.id,
-                        child: Text(
-                            "${a.name} (${finance.currency}${a.balance.toStringAsFixed(0)})")))
-                    .toList(),
-                onChanged: (val) => setState(() => toId = val!),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: amountCtrl,
-                decoration: const InputDecoration(labelText: "Transfer Amount"),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Cancel")),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentGreen,
-                  foregroundColor: Colors.white),
-              onPressed: () {
-                final amt = double.tryParse(amountCtrl.text);
-                if (amt == null || amt <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          "Please enter a valid transfer amount greater than zero."),
-                      backgroundColor: AppColors.alertRed,
-                    ),
-                  );
-                  return;
-                }
-                final success = finance.transferBetweenAccounts(
-                  fromAccountId: fromId,
-                  toAccountId: toId,
-                  amount: amt,
-                );
-                if (success) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          "Transferred ${finance.currency}${amt.toStringAsFixed(2)} successfully!"),
-                      backgroundColor: AppColors.accentGreen,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content:
-                          Text(finance.lastErrorMessage ?? "Transfer failed."),
-                      backgroundColor: AppColors.alertRed,
-                    ),
-                  );
-                }
-              },
-              child: const Text("Transfer"),
             ),
           ],
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/models.dart';
 import '../services/finance_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -65,7 +66,8 @@ class AnalyticsScreen extends StatelessWidget {
 
     // Compute dynamic category totals from actual expenses
     final Map<String, double> categoryTotals = {};
-    for (final exp in finance.expenses) {
+    for (final exp
+        in finance.expenses.where((e) => e.type == TransactionType.expense)) {
       categoryTotals[exp.category] =
           (categoryTotals[exp.category] ?? 0.0) + exp.amount;
     }

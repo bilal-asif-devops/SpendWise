@@ -93,6 +93,8 @@ class Account {
   }
 }
 
+enum TransactionType { expense, income, transfer }
+
 class Expense {
   final String id;
   final String title;
@@ -104,6 +106,12 @@ class Expense {
   final String walletName;
   final String? note;
   final bool isSample;
+  final TransactionType type;
+  final String? toAccountId;
+  final String? toWalletName;
+  final String currency;
+  final double? exchangeRate;
+  final List<String> tags;
 
   Expense({
     required this.id,
@@ -116,6 +124,12 @@ class Expense {
     this.walletName = 'Visa Debit',
     this.note,
     this.isSample = false,
+    this.type = TransactionType.expense,
+    this.toAccountId,
+    this.toWalletName,
+    this.currency = 'USD',
+    this.exchangeRate,
+    this.tags = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -129,6 +143,12 @@ class Expense {
         'walletName': walletName,
         'note': note,
         'isSample': isSample,
+        'type': type.name,
+        'toAccountId': toAccountId,
+        'toWalletName': toWalletName,
+        'currency': currency,
+        'exchangeRate': exchangeRate,
+        'tags': tags,
       };
 
   factory Expense.fromJson(Map<String, dynamic> json) => Expense(
@@ -143,7 +163,57 @@ class Expense {
         walletName: json['walletName'] as String? ?? 'Visa Debit',
         note: json['note'] as String?,
         isSample: json['isSample'] as bool? ?? false,
+        type: TransactionType.values.firstWhere(
+          (t) => t.name == json['type'],
+          orElse: () => TransactionType.expense,
+        ),
+        toAccountId: json['toAccountId'] as String?,
+        toWalletName: json['toWalletName'] as String?,
+        currency: json['currency'] as String? ?? 'USD',
+        exchangeRate: (json['exchangeRate'] as num?)?.toDouble(),
+        tags: (json['tags'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const [],
       );
+
+  Expense copyWith({
+    String? id,
+    String? title,
+    String? category,
+    double? amount,
+    DateTime? date,
+    String? icon,
+    String? accountId,
+    String? walletName,
+    String? note,
+    bool? isSample,
+    TransactionType? type,
+    String? toAccountId,
+    String? toWalletName,
+    String? currency,
+    double? exchangeRate,
+    List<String>? tags,
+  }) {
+    return Expense(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      amount: amount ?? this.amount,
+      date: date ?? this.date,
+      icon: icon ?? this.icon,
+      accountId: accountId ?? this.accountId,
+      walletName: walletName ?? this.walletName,
+      note: note ?? this.note,
+      isSample: isSample ?? this.isSample,
+      type: type ?? this.type,
+      toAccountId: toAccountId ?? this.toAccountId,
+      toWalletName: toWalletName ?? this.toWalletName,
+      currency: currency ?? this.currency,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
+      tags: tags ?? this.tags,
+    );
+  }
 }
 
 class Subscription {

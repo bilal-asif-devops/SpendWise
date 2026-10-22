@@ -80,7 +80,15 @@ class FinanceProvider with ChangeNotifier {
   }
 
   double get totalExpenses {
-    return _expenses.fold(0.0, (sum, item) => sum + item.amount);
+    return _expenses
+        .where((item) => item.type == TransactionType.expense)
+        .fold(0.0, (sum, item) => sum + item.amount);
+  }
+
+  double get totalIncome {
+    return _expenses
+        .where((item) => item.type == TransactionType.income)
+        .fold(0.0, (sum, item) => sum + item.amount);
   }
 
   // Safe-to-Spend Formula:
@@ -340,6 +348,9 @@ class FinanceProvider with ChangeNotifier {
     required double amount,
     String? accountId,
     String? note,
+    String? currency,
+    double? exchangeRate,
+    List<String>? tags,
   }) {
     if (!amount.isFinite || amount.isNaN || amount <= 0) {
       _lastErrorMessage =
@@ -385,10 +396,79 @@ class FinanceProvider with ChangeNotifier {
         walletName: targetAccount?.name ?? "Cash",
         note: note,
         isSample: false,
+        type: TransactionType.expense,
+        currency: currency ?? _currency,
+        exchangeRate: exchangeRate,
+        tags: tags ?? const [],
       ),
     );
 
     _recalculateBudgets();
+    notifyListeners();
+    _persistToStorage();
+  }
+
+  void addIncome({
+    required String title,
+    required String category,
+    required double amount,
+    String? accountId,
+    String? note,
+    String? currency,
+    double? exchangeRate,
+    List<String>? tags,
+  }) {
+    if (!amount.isFinite || amount.isNaN || amount <= 0) {
+      _lastErrorMessage =
+          "Income amount must be a finite number greater than zero.";
+      notifyListeners();
+      return;
+    }
+
+    Account? targetAccount;
+    if (accountId != null) {
+      final idx = _accounts.indexWhere((a) => a.id == accountId);
+      if (idx != -1) {
+        targetAccount = _accounts[idx];
+      }
+    } else if (_accounts.isNotEmpty) {
+      targetAccount = _accounts.first;
+    }
+
+    if (targetAccount != null) {
+      // Deposit into receiving account
+      final updatedAccount = targetAccount.copyWith(
+        balance: targetAccount.type == AccountType.credit
+            ? targetAccount.balance - amount // credit liability decreases
+            : targetAccount.balance + amount, // asset balance increases
+      );
+
+      final accIndex = _accounts.indexWhere((a) => a.id == targetAccount!.id);
+      if (accIndex != -1) {
+        _accounts[accIndex] = updatedAccount;
+      }
+    }
+
+    _expenses.insert(
+      0,
+      Expense(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        category: category,
+        amount: amount,
+        date: DateTime.now(),
+        icon: _getCategoryIcon(category),
+        accountId: targetAccount?.id ?? "cash_wallet",
+        walletName: targetAccount?.name ?? "Cash",
+        note: note,
+        isSample: false,
+        type: TransactionType.income,
+        currency: currency ?? _currency,
+        exchangeRate: exchangeRate,
+        tags: tags ?? const [],
+      ),
+    );
+
     notifyListeners();
     _persistToStorage();
   }
@@ -716,19 +796,45 @@ class FinanceProvider with ChangeNotifier {
   String _getCategoryIcon(String cat) {
     switch (cat.toLowerCase()) {
       case 'food':
+      case 'food & drink':
+      case 'groceries':
         return '🍔';
       case 'shopping':
         return '🛍️';
       case 'transport':
-      case 'travel':
+      case 'car':
         return '🚗';
+      case 'travel':
+        return '✈️';
       case 'bills':
+      case 'bills & fees':
       case 'utilities':
         return '💡';
+      case 'home':
+        return '🏡';
+      case 'entertainment':
+        return '🍿';
       case 'health':
-        return '🏋️';
+      case 'healthcare':
+        return '💊';
       case 'education':
         return '📚';
+      case 'personal':
+        return '👤';
+      case 'salary':
+        return '💼';
+      case 'freelance':
+        return '💻';
+      case 'investments':
+        return '📈';
+      case 'gift':
+        return '🎁';
+      case 'refund':
+        return '🔄';
+      case 'rental':
+        return '🏢';
+      case 'other':
+        return '💰';
       default:
         return '💳';
     }
