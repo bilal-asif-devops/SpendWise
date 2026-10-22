@@ -11,5 +11,25 @@
         "supportEmail": "support@spendwise.app"
       }
     }
+  },
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "spendwise-958fa",
+          "configurations": {
+            "android": "1:60973036917:android:823e276be87ad0d683cf3c",
+            "web": "1:60973036917:web:b57936be402654cd83cf3c"
+          }
+        }
+      },
+      "android": {
+        "default": {
+          "projectId": "spendwise-958fa",
+          "appId": "1:60973036917:android:823e276be87ad0d683cf3c",
+          "fileOutput": "android/app/google-services.json"
+        }
+      }
+    }
   }
 }
