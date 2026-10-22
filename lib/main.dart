@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/finance_provider.dart';
+import 'services/auth_sync_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
@@ -17,6 +18,16 @@ class SpendWiseApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => FinanceProvider()),
+        ChangeNotifierProxyProvider<FinanceProvider, AuthSyncProvider>(
+          create: (ctx) => AuthSyncProvider.createDefault(
+            financeProvider: ctx.read<FinanceProvider>(),
+          ),
+          update: (ctx, finance, previous) =>
+              previous ??
+              AuthSyncProvider.createDefault(
+                financeProvider: finance,
+              ),
+        ),
       ],
       child: Consumer<FinanceProvider>(
         builder: (context, finance, child) {

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/auth_models.dart';
 import '../models/models.dart';
+import '../services/auth_sync_provider.dart';
 import '../services/finance_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/quick_add_sheet.dart';
+import 'auth/backend_status_modal.dart';
 import 'subscriptions_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -12,9 +15,10 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final finance = Provider.of<FinanceProvider>(context);
+    final authSync = Provider.of<AuthSyncProvider?>(context);
 
     if (finance.expenses.isEmpty) {
-      return _buildEmptyHomeView(context, finance);
+      return _buildEmptyHomeView(context, finance, authSync);
     }
 
     return Scaffold(
@@ -69,15 +73,23 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceWhite,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.borderLight),
-                    ),
-                    child: const Icon(Icons.notifications_none,
-                        color: AppColors.textDark, size: 22),
+                  Row(
+                    children: [
+                      if (authSync != null) ...[
+                        _SyncStatusChip(authSync: authSync),
+                        const SizedBox(width: 8),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceWhite,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: const Icon(Icons.notifications_none,
+                            color: AppColors.textDark, size: 22),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -715,7 +727,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyHomeView(BuildContext context, FinanceProvider finance) {
+  Widget _buildEmptyHomeView(BuildContext context, FinanceProvider finance,
+      AuthSyncProvider? authSync) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -728,6 +741,10 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         actions: [
+          if (authSync != null) ...[
+            _SyncStatusChip(authSync: authSync),
+            const SizedBox(width: 10),
+          ],
           CircleAvatar(
             radius: 18,
             backgroundColor: AppColors.accentGreen.withValues(alpha: 0.18),
@@ -1047,6 +1064,105 @@ class HomeScreen extends StatelessWidget {
             child: const Text("Got It"),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SyncStatusChip extends StatelessWidget {
+  final AuthSyncProvider authSync;
+
+  const _SyncStatusChip({required this.authSync});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSyncing = authSync.syncStatus == SyncStatus.syncing;
+    final isSynced = authSync.syncStatus == SyncStatus.synced;
+    final isAuth = authSync.isAuthenticated;
+
+    return InkWell(
+      key: const Key('home_sync_status_chip'),
+      borderRadius: BorderRadius.circular(20),
+      onTap: () async {
+        if (isAuth) {
+          await authSync.syncVaultWithCloud();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  authSync.syncStatus == SyncStatus.synced
+                      ? 'Financial vault synced to cloud!'
+                      : (authSync.errorMessage ?? 'Sync failed'),
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        } else {
+          BackendStatusModal.show(context);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSynced
+              ? Colors.green.shade50
+              : isAuth
+                  ? Colors.blue.shade50
+                  : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSynced
+                ? Colors.green.shade200
+                : isAuth
+                    ? Colors.blue.shade200
+                    : AppColors.borderLight,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSyncing)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(
+                isSynced
+                    ? Icons.cloud_done_rounded
+                    : isAuth
+                        ? Icons.cloud_upload_outlined
+                        : Icons.cloud_outlined,
+                size: 16,
+                color: isSynced
+                    ? AppColors.accentGreen
+                    : isAuth
+                        ? Colors.blue.shade700
+                        : AppColors.textMuted,
+              ),
+            const SizedBox(width: 6),
+            Text(
+              isSyncing
+                  ? 'Syncing'
+                  : isSynced
+                      ? 'Synced'
+                      : isAuth
+                          ? 'Sync'
+                          : 'Local',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isSynced
+                    ? AppColors.accentGreen
+                    : isAuth
+                        ? Colors.blue.shade800
+                        : AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -37,6 +37,7 @@ class FinanceProvider with ChangeNotifier {
   bool _hasCompletedOnboarding = false;
   Map<String, dynamic> _onboardingData = {};
   String? _lastErrorMessage;
+  DateTime _lastUpdated = DateTime(2026, 1, 1);
 
   List<Account> _accounts = [];
   List<Expense> _expenses = [];
@@ -898,14 +899,22 @@ class FinanceProvider with ChangeNotifier {
 
   // Local Storage Vault Persistence
   Future<void> _persistToStorage() async {
+    _lastUpdated = DateTime.now();
     final vaultData = _toVaultMap();
     await _storageService.saveVault(vaultData);
+  }
+
+  Map<String, dynamic> toVaultMap() => _toVaultMap();
+
+  void loadFromVaultMap(Map<String, dynamic> vault) {
+    _loadFromVaultMap(vault);
+    notifyListeners();
   }
 
   Map<String, dynamic> _toVaultMap() {
     return {
       'version': 2,
-      'lastUpdated': DateTime.now().toIso8601String(),
+      'lastUpdated': _lastUpdated.toIso8601String(),
       'profile': {
         'userName': _userName,
         'userEmail': _userEmail,
@@ -925,6 +934,10 @@ class FinanceProvider with ChangeNotifier {
   }
 
   void _loadFromVaultMap(Map<String, dynamic> vault) {
+    if (vault['lastUpdated'] != null) {
+      _lastUpdated =
+          DateTime.tryParse(vault['lastUpdated'].toString()) ?? _lastUpdated;
+    }
     if (vault['profile'] != null) {
       final p = vault['profile'] as Map<String, dynamic>;
       _userName = p['userName'] as String? ?? _userName;

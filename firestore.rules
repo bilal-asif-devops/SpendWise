@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}
+    // Document ID: userId (User profile and sync metadata)
+    // Fields:
+    //   - uid: string (required, == request.auth.uid)
+    //   - email: string (optional, <= 254 chars)
+    //   - displayName: string (optional, <= 100 chars)
+    //   - lastSyncTimestamp: timestamp / string (optional)
+    //   - createdAt: timestamp / string (optional, immutable)
+    //
+    // Collection: users/{userId}/vault/{documentId}
+    // Document ID: 'current' (Active financial vault snapshot)
+    // Fields:
+    //   - version: int (required, >= 1)
+    //   - lastUpdated: string / timestamp (required)
+    //   - updatedBy: string (required, == request.auth.uid)
+    //   - clientTimestamp: int (required, positive integer)
+    //   - profile: map (required)
+    //   - accounts: list (required, <= 500 items)
+    //   - expenses: list (required, <= 10000 items)
+    //   - subscriptions: list (required, <= 500 items)
+    //   - budgets: list (required, <= 100 items)
+    //   - schemaVersion: int (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() <= 254 &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidVaultSnapshot(data) {
+      return hasRequiredFields(data, [
+        'version',
+        'lastUpdated',
+        'updatedBy',
+        'clientTimestamp',
+        'accounts',
+        'expenses'
+      ]) &&
+      data.updatedBy == request.auth.uid &&
+      data.version is int && data.version >= 1 &&
+      data.clientTimestamp is int && data.clientTimestamp > 0 &&
+      data.accounts is list && data.accounts.size() <= 500 &&
+      data.expenses is list && data.expenses.size() <= 10000 &&
+      (!('subscriptions' in data) || (data.subscriptions is list && data.subscriptions.size() <= 500)) &&
+      (!('budgets' in data) || (data.budgets is list && data.budgets.size() <= 100));
+    }
+
+    function isValidUserProfile(data, userId) {
+      return (!('uid' in data) || data.uid == userId) &&
+        (!('email' in data) || isValidEmail(data.email)) &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100));
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Global default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Per-user isolated storage tree
+    match /users/{userId} {
+      // User profile document
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(request.resource.data, userId);
+      allow update: if isOwner(userId) && isValidUserProfile(request.resource.data, userId);
+      allow delete: if isOwner(userId);
+
+      // Financial vault snapshots
+      match /vault/{documentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidVaultSnapshot(request.resource.data);
+        allow update: if isOwner(userId) && isValidVaultSnapshot(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // Any other user-scoped subcollections (e.g., statement import audits, logs)
+      match /{allSubcollections=**} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+  }
+}

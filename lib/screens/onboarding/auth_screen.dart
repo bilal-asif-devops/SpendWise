@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../services/auth_sync_provider.dart';
 import '../../theme/app_theme.dart';
+import '../auth/backend_status_modal.dart';
+import '../auth/email_auth_sheet.dart';
+import '../auth/guest_migration_dialog.dart';
 
-class AuthScreen extends StatelessWidget {
+class AuthScreen extends StatefulWidget {
   final VoidCallback onExploreAsGuest;
+  final VoidCallback? onAuthenticated;
 
   const AuthScreen({
     super.key,
     required this.onExploreAsGuest,
+    this.onAuthenticated,
   });
+
+  @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  bool _isLoadingGoogle = false;
 
   void _showAuthPrototypeNotice(BuildContext context, String providerName) {
     showDialog(
@@ -39,7 +53,7 @@ class AuthScreen extends StatelessWidget {
             ),
             onPressed: () {
               Navigator.pop(ctx);
-              onExploreAsGuest();
+              widget.onExploreAsGuest();
             },
             child: const Text('Continue as Guest'),
           ),
@@ -48,15 +62,132 @@ class AuthScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _handleGoogleSignIn(AuthSyncProvider? authProvider) async {
+    if (authProvider == null) {
+      _showAuthPrototypeNotice(context, 'Google');
+      return;
+    }
+
+    setState(() => _isLoadingGoogle = true);
+    final success = await authProvider.loginWithGoogle();
+    if (!mounted) return;
+    setState(() => _isLoadingGoogle = false);
+
+    if (success) {
+      if (authProvider.hasPendingGuestMigration) {
+        final shouldMerge = await GuestMigrationDialog.show(context);
+        if (mounted && shouldMerge != null) {
+          await authProvider.resolveGuestMigration(
+            mergeGuestData: shouldMerge,
+          );
+        }
+      }
+      if (mounted) {
+        widget.onAuthenticated?.call();
+        if (widget.onAuthenticated == null) {
+          widget.onExploreAsGuest();
+        }
+      }
+    } else if (authProvider.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage!),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _handleEmailAuth(AuthSyncProvider? authProvider) {
+    if (authProvider == null) {
+      _showAuthPrototypeNotice(context, 'Email');
+      return;
+    }
+
+    EmailAuthSheet.show(
+      context,
+      onSuccess: () {
+        widget.onAuthenticated?.call();
+        if (widget.onAuthenticated == null) {
+          widget.onExploreAsGuest();
+        }
+      },
+    );
+  }
+
+  void _handleAppleAuth(AuthSyncProvider? authProvider) {
+    if (authProvider == null) {
+      _showAuthPrototypeNotice(context, 'Apple');
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Apple Sign-In is configured for iOS production builds with Apple Developer certificates.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _handleGuestEntry(AuthSyncProvider? authProvider) {
+    authProvider?.continueAsGuest();
+    widget.onExploreAsGuest();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthSyncProvider?>(context);
+    final isConfigured = authProvider?.isBackendConfigured ?? false;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           child: Column(
             children: [
+              // Top Bar: Backend Readiness Status Pill
+              if (authProvider != null) ...[
+                Align(
+                  alignment: Alignment.topRight,
+                  child: TextButton.icon(
+                    onPressed: () => BackendStatusModal.show(context),
+                    icon: Icon(
+                      isConfigured
+                          ? Icons.cloud_done_rounded
+                          : Icons.info_outline_rounded,
+                      size: 16,
+                      color: isConfigured
+                          ? AppColors.accentGreen
+                          : AppColors.textMuted,
+                    ),
+                    label: Text(
+                      isConfigured ? 'Cloud Connected' : 'Engine Status',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isConfigured
+                            ? AppColors.accentGreen
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      backgroundColor: isConfigured
+                          ? AppColors.accentGreen.withValues(alpha: 0.1)
+                          : Colors.grey.shade100,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+
               const Spacer(flex: 1),
 
               // Brand Icon
@@ -80,7 +211,7 @@ class AuthScreen extends StatelessWidget {
                   size: 42,
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               // Headline
               const Text(
@@ -96,7 +227,7 @@ class AuthScreen extends StatelessWidget {
               const SizedBox(height: 10),
 
               const Text(
-                'Sign in to sync your data across devices, or explore SpendWise locally with complete offline privacy.',
+                'Sign in to sync your financial data securely, or explore SpendWise locally with complete offline privacy.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -104,20 +235,28 @@ class AuthScreen extends StatelessWidget {
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 32),
 
               // Sign in with Google
               _AuthButton(
-                icon: const Text(
-                  'G',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF4285F4),
-                  ),
-                ),
+                icon: _isLoadingGoogle
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    : const Text(
+                        'G',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF4285F4),
+                        ),
+                      ),
                 label: 'Continue with Google',
-                onPressed: () => _showAuthPrototypeNotice(context, 'Google'),
+                onPressed: _isLoadingGoogle
+                    ? () {}
+                    : () => _handleGoogleSignIn(authProvider),
               ),
               const SizedBox(height: 12),
 
@@ -125,16 +264,19 @@ class AuthScreen extends StatelessWidget {
               _AuthButton(
                 icon: const Icon(Icons.apple, color: Colors.black, size: 24),
                 label: 'Continue with Apple',
-                onPressed: () => _showAuthPrototypeNotice(context, 'Apple'),
+                onPressed: () => _handleAppleAuth(authProvider),
               ),
               const SizedBox(height: 12),
 
               // Sign in with Email
               _AuthButton(
-                icon: const Icon(Icons.mail_outline_rounded,
-                    color: AppColors.textDark, size: 22),
+                icon: const Icon(
+                  Icons.mail_outline_rounded,
+                  color: AppColors.textDark,
+                  size: 22,
+                ),
                 label: 'Sign up with Email',
-                onPressed: () => _showAuthPrototypeNotice(context, 'Email'),
+                onPressed: () => _handleEmailAuth(authProvider),
               ),
 
               const Spacer(flex: 2),
@@ -173,7 +315,7 @@ class AuthScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(18),
                     ),
                   ),
-                  onPressed: onExploreAsGuest,
+                  onPressed: () => _handleGuestEntry(authProvider),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
