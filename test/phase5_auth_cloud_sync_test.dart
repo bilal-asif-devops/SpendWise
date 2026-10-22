@@ -7,7 +7,9 @@ import 'package:spendwise/screens/auth/backend_status_modal.dart';
 import 'package:spendwise/screens/auth/email_auth_sheet.dart';
 import 'package:spendwise/screens/auth/guest_migration_dialog.dart';
 import 'package:spendwise/screens/home_screen.dart';
+import 'package:spendwise/screens/more_screen.dart';
 import 'package:spendwise/screens/onboarding/auth_screen.dart';
+import 'package:spendwise/screens/settings_screen.dart';
 import 'package:spendwise/services/auth_sync_provider.dart';
 import 'package:spendwise/services/finance_provider.dart';
 import 'package:spendwise/services/local_auth_service.dart';
@@ -549,6 +551,109 @@ void main() {
       );
 
       expect(find.byKey(const Key('home_sync_status_chip')), findsOneWidget);
+    });
+
+    testWidgets(
+        '20. Guest-to-authenticated profile update: Google Sign-In immediately updates FinanceProvider and SettingsScreen without refresh',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      // Initially in Guest state
+      expect(finance.userName, 'Guest User');
+      expect(finance.userEmail, 'guest@spendwise.local');
+
+      await tester.pumpWidget(
+        createTestApp(
+          const SettingsScreen(),
+        ),
+      );
+
+      // Verify guest state is rendered
+      expect(find.text('Guest User'), findsOneWidget);
+      expect(find.text('guest@spendwise.local'), findsOneWidget);
+      expect(find.text('Free Tier • Local Storage'), findsOneWidget);
+
+      // Sign in with Google
+      final success = await authSync.loginWithGoogle();
+      expect(success, isTrue);
+
+      // FinanceProvider state must be updated immediately
+      expect(finance.userName, 'Google User');
+      expect(finance.userEmail, 'user.google@gmail.com');
+
+      // Re-pump widget to verify immediate UI propagation
+      await tester.pumpAndSettle();
+
+      expect(find.text('Google User'), findsOneWidget);
+      expect(find.text('user.google@gmail.com'), findsOneWidget);
+      expect(find.text('Cloud Synced • Firebase'), findsOneWidget);
+    });
+
+    testWidgets(
+        '21. MoreScreen immediately displays authenticated user credentials and cloud badge',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      // Sign in with email/password
+      await authSync.registerWithEmail(
+        'alice.dev@company.com',
+        'Secret123!',
+        displayName: 'Alice Developer',
+      );
+
+      await tester.pumpWidget(
+        createTestApp(
+          const MoreScreen(),
+        ),
+      );
+
+      expect(find.text('Alice Developer'), findsOneWidget);
+      expect(find.text('alice.dev@company.com'), findsOneWidget);
+      expect(find.text('Cloud Synced • Firebase'), findsOneWidget);
+    });
+
+    testWidgets(
+        '22. Sign out reverts FinanceProvider profile and SettingsScreen to Guest User',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await authSync.loginWithGoogle();
+      expect(finance.userName, 'Google User');
+
+      await tester.pumpWidget(
+        createTestApp(
+          const SettingsScreen(),
+        ),
+      );
+      expect(find.text('Google User'), findsOneWidget);
+
+      // Sign out
+      await authSync.logout();
+      await tester.pumpAndSettle();
+
+      // FinanceProvider profile must be cleanly reverted
+      expect(finance.userName, 'Guest User');
+      expect(finance.userEmail, 'guest@spendwise.local');
+
+      // Settings screen must reflect guest state
+      expect(find.text('Guest User'), findsOneWidget);
+      expect(find.text('guest@spendwise.local'), findsOneWidget);
+      expect(find.text('Free Tier • Local Storage'), findsOneWidget);
     });
   });
 }

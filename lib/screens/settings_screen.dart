@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/auth_sync_provider.dart';
 import '../services/finance_provider.dart';
 import '../theme/app_theme.dart';
+import 'auth/backend_status_modal.dart';
+import 'auth/email_auth_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,6 +20,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final finance = Provider.of<FinanceProvider>(context);
+    final authSync = Provider.of<AuthSyncProvider?>(context);
+    final authUser = authSync?.currentUser;
+    final bool isAuthenticated = authSync?.isAuthenticated ?? false;
+    final String? photoUrl = authUser?.photoUrl;
+
+    final String displayName = (authUser?.displayName != null &&
+            authUser!.displayName!.trim().isNotEmpty)
+        ? authUser.displayName!.trim()
+        : finance.userName;
+    final String displayEmail =
+        (authUser?.email != null && authUser!.email!.trim().isNotEmpty)
+            ? authUser.email!.trim()
+            : finance.userEmail;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -29,8 +45,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Profile Card from Figma Screen 6
+              // User Profile Card
               Container(
+                key: const Key('settings_profile_card'),
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceWhite,
@@ -42,10 +59,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: AppColors.primaryNavy,
+                      backgroundImage: (photoUrl != null &&
+                              photoUrl.isNotEmpty &&
+                              !photoUrl.contains('default-user'))
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      onBackgroundImageError:
+                          photoUrl != null ? (_, __) {} : null,
                       child: Text(
-                        finance.userName.isNotEmpty
-                            ? finance.userName[0].toUpperCase()
-                            : "B",
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : "G",
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -58,16 +82,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            finance.userName,
+                            displayName,
+                            key: const Key('settings_profile_name'),
                             style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.textDark),
                           ),
                           const SizedBox(height: 2),
-                          const Text(
-                            "bilal.uet@student.taxila.edu",
-                            style: TextStyle(
+                          Text(
+                            displayEmail,
+                            key: const Key('settings_profile_email'),
+                            style: const TextStyle(
                                 fontSize: 12, color: AppColors.textMuted),
                           ),
                           const SizedBox(height: 6),
@@ -75,21 +101,149 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color:
-                                  AppColors.accentGreen.withValues(alpha: 0.15),
+                              color: isAuthenticated
+                                  ? Colors.green.shade50
+                                  : AppColors.accentGreen
+                                      .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              "Free Tier • Local Storage",
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.accentGreen,
-                                  fontWeight: FontWeight.bold),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isAuthenticated
+                                      ? Icons.cloud_done_rounded
+                                      : Icons.shield_outlined,
+                                  size: 12,
+                                  color: isAuthenticated
+                                      ? AppColors.accentGreen
+                                      : AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  isAuthenticated
+                                      ? "Cloud Synced • Firebase"
+                                      : "Free Tier • Local Storage",
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: isAuthenticated
+                                          ? AppColors.accentGreen
+                                          : AppColors.textDark,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Account & Cloud Section
+              const Text(
+                "Account & Cloud Sync",
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 10),
+
+              Material(
+                color: AppColors.surfaceWhite,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  side: const BorderSide(color: AppColors.borderLight),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    if (isAuthenticated) ...[
+                      ListTile(
+                        leading: const Icon(Icons.sync_rounded,
+                            color: AppColors.accentGreen),
+                        title: const Text("Sync Now",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 14)),
+                        subtitle: Text(
+                          authSync?.lastSyncTime != null
+                              ? "Last synced: ${authSync!.lastSyncTime!.toLocal().toString().split('.').first}"
+                              : "Tap to sync with Cloud Firestore",
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: AppColors.textMuted),
+                        onTap: () async {
+                          await authSync?.syncVaultWithCloud();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Vault synced to cloud!"),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.logout_rounded,
+                            color: Colors.redAccent),
+                        title: const Text("Sign Out",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: Colors.redAccent)),
+                        subtitle: Text(
+                          "Sign out of $displayEmail",
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        onTap: () async {
+                          await authSync?.logout();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Signed out successfully"),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ] else ...[
+                      ListTile(
+                        leading: const Icon(Icons.cloud_upload_outlined,
+                            color: AppColors.primaryNavy),
+                        title: const Text("Sign In or Register",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 14)),
+                        subtitle: const Text(
+                          "Sync your finances with Google or Email",
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: AppColors.textMuted),
+                        onTap: () => EmailAuthSheet.show(context),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      ListTile(
+                        leading: const Icon(Icons.info_outline_rounded,
+                            color: AppColors.textMuted),
+                        title: const Text("Backend Engine Status",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 14)),
+                        subtitle: const Text(
+                          "View live Firebase configuration status",
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: AppColors.textMuted),
+                        onTap: () => BackendStatusModal.show(context),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -105,12 +259,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 10),
 
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceWhite,
+              Material(
+                color: AppColors.surfaceWhite,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.borderLight),
+                  side: const BorderSide(color: AppColors.borderLight),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
                     SwitchListTile(
@@ -172,12 +327,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 10),
 
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceWhite,
+              Material(
+                color: AppColors.surfaceWhite,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.borderLight),
+                  side: const BorderSide(color: AppColors.borderLight),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
                     ListTile(

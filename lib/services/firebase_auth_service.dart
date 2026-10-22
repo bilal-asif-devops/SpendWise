@@ -134,6 +134,16 @@ class FirebaseAuthService implements AuthService {
         final fb.UserCredential userCredential =
             await fb.FirebaseAuth.instance.signInWithPopup(authProvider);
         final user = userCredential.user;
+        final currentFbUser = fb.FirebaseAuth.instance.currentUser;
+
+        debugPrint(
+          'FirebaseAuthService [Web Safe Diagnostics]: '
+          'userCredential.user exists=${user != null}, '
+          'currentUser exists=${currentFbUser != null}, '
+          'providerIds=${currentFbUser?.providerData.map((p) => p.providerId).toList()}, '
+          'isAnonymous=${currentFbUser?.isAnonymous}',
+        );
+
         if (user == null) return null;
         return _mapFirebaseUser(user);
       } else {
@@ -151,6 +161,16 @@ class FirebaseAuthService implements AuthService {
             await fb.FirebaseAuth.instance.signInWithCredential(credential);
 
         final user = userCredential.user;
+        final currentFbUser = fb.FirebaseAuth.instance.currentUser;
+
+        debugPrint(
+          'FirebaseAuthService [Mobile Safe Diagnostics]: '
+          'userCredential.user exists=${user != null}, '
+          'currentUser exists=${currentFbUser != null}, '
+          'providerIds=${currentFbUser?.providerData.map((p) => p.providerId).toList()}, '
+          'isAnonymous=${currentFbUser?.isAnonymous}',
+        );
+
         if (user == null) {
           throw const AuthException(
             message:

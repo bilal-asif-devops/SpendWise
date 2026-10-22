@@ -159,7 +159,7 @@ class LocalAuthService implements AuthService, CloudSyncService {
       uid: uid,
       email: 'user.google@gmail.com',
       displayName: 'Google User',
-      photoUrl: 'https://lh3.googleusercontent.com/a/default-user',
+      photoUrl: null,
       createdAt: DateTime.now(),
     );
 

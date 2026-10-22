@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/auth_sync_provider.dart';
 import '../services/finance_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -14,6 +15,19 @@ class _MoreScreenState extends State<MoreScreen> {
   @override
   Widget build(BuildContext context) {
     final finance = Provider.of<FinanceProvider>(context);
+    final authSync = Provider.of<AuthSyncProvider?>(context);
+    final authUser = authSync?.currentUser;
+    final bool isAuthenticated = authSync?.isAuthenticated ?? false;
+    final String? photoUrl = authUser?.photoUrl;
+
+    final String displayName = (authUser?.displayName != null &&
+            authUser!.displayName!.trim().isNotEmpty)
+        ? authUser.displayName!.trim()
+        : finance.userName;
+    final String displayEmail =
+        (authUser?.email != null && authUser!.email!.trim().isNotEmpty)
+            ? authUser.email!.trim()
+            : finance.userEmail;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -31,6 +45,7 @@ class _MoreScreenState extends State<MoreScreen> {
             children: [
               // User Profile Card from Figma Screen 6
               Container(
+                key: const Key('more_profile_card'),
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceWhite,
@@ -42,10 +57,17 @@ class _MoreScreenState extends State<MoreScreen> {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: AppColors.primaryNavy,
+                      backgroundImage: (photoUrl != null &&
+                              photoUrl.isNotEmpty &&
+                              !photoUrl.contains('default-user'))
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      onBackgroundImageError:
+                          photoUrl != null ? (_, __) {} : null,
                       child: Text(
-                        finance.userName.isNotEmpty
-                            ? finance.userName[0].toUpperCase()
-                            : "B",
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : "G",
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -58,7 +80,8 @@ class _MoreScreenState extends State<MoreScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            finance.userName,
+                            displayName,
+                            key: const Key('more_profile_name'),
                             style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -66,7 +89,8 @@ class _MoreScreenState extends State<MoreScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            finance.userEmail,
+                            displayEmail,
+                            key: const Key('more_profile_email'),
                             style: const TextStyle(
                                 fontSize: 12.5, color: AppColors.textMuted),
                           ),
@@ -75,16 +99,37 @@ class _MoreScreenState extends State<MoreScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color:
-                                  AppColors.accentGreen.withValues(alpha: 0.15),
+                              color: isAuthenticated
+                                  ? Colors.green.shade50
+                                  : AppColors.accentGreen
+                                      .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              "Spendee Recreation Edition",
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.accentGreen,
-                                  fontWeight: FontWeight.bold),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isAuthenticated
+                                      ? Icons.cloud_done_rounded
+                                      : Icons.shield_outlined,
+                                  size: 12,
+                                  color: isAuthenticated
+                                      ? AppColors.accentGreen
+                                      : AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  isAuthenticated
+                                      ? "Cloud Synced • Firebase"
+                                      : "Spendee Recreation Edition • Guest",
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: isAuthenticated
+                                          ? AppColors.accentGreen
+                                          : AppColors.textDark,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -106,12 +151,13 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               const SizedBox(height: 10),
 
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceWhite,
+              Material(
+                color: AppColors.surfaceWhite,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderLight),
+                  side: const BorderSide(color: AppColors.borderLight),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
                     SwitchListTile(

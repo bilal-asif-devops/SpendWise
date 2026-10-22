@@ -878,6 +878,24 @@ class FinanceProvider with ChangeNotifier {
     _persistToStorage();
   }
 
+  void updateProfile({String? name, String? email}) {
+    bool changed = false;
+    if (name != null && name.trim().isNotEmpty && _userName != name.trim()) {
+      _userName = name.trim();
+      changed = true;
+    }
+    if (email != null &&
+        email.trim().isNotEmpty &&
+        _userEmail != email.trim()) {
+      _userEmail = email.trim();
+      changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+      _persistToStorage();
+    }
+  }
+
   void resetOnboarding() {
     _hasCompletedOnboarding = false;
     _onboardingData.clear();
@@ -940,8 +958,24 @@ class FinanceProvider with ChangeNotifier {
     }
     if (vault['profile'] != null) {
       final p = vault['profile'] as Map<String, dynamic>;
-      _userName = p['userName'] as String? ?? _userName;
-      _userEmail = p['userEmail'] as String? ?? _userEmail;
+      final vaultName = p['userName'] as String?;
+      final vaultEmail = p['userEmail'] as String?;
+
+      if (vaultName != null &&
+          vaultName.trim().isNotEmpty &&
+          vaultName != 'Guest User') {
+        _userName = vaultName.trim();
+      } else if (_userName == 'Guest User' && vaultName != null) {
+        _userName = vaultName.trim();
+      }
+
+      if (vaultEmail != null &&
+          vaultEmail.trim().isNotEmpty &&
+          vaultEmail != 'guest@spendwise.local') {
+        _userEmail = vaultEmail.trim();
+      } else if (_userEmail == 'guest@spendwise.local' && vaultEmail != null) {
+        _userEmail = vaultEmail.trim();
+      }
       _currency = p['currency'] as String? ?? _currency;
       _monthlySavingsGoal =
           (p['monthlySavingsGoal'] as num?)?.toDouble() ?? _monthlySavingsGoal;

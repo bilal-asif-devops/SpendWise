@@ -77,11 +77,23 @@ class AuthSyncProvider with ChangeNotifier {
   bool get isBackendConfigured => _authService.isConfigured;
 
   void _init() {
+    final initialUser = _authService.currentUser;
+    if (initialUser != null) {
+      _currentUser = initialUser;
+      _status = AuthStatus.authenticated;
+      _updateFinanceProfile(initialUser);
+    }
+
     _authSubscription = _authService.authStateChanges.listen((user) async {
+      debugPrint(
+        'AuthSyncProvider [Safe Diagnostics]: authStateChanges received '
+        'userExists=${user != null}, emailDomain=${user?.email?.split('@').last}',
+      );
       if (user != null) {
         _currentUser = user;
         _status = AuthStatus.authenticated;
         _errorMessage = null;
+        _updateFinanceProfile(user);
         notifyListeners();
         await _checkAndSyncOnLogin(user);
       } else {
@@ -93,6 +105,29 @@ class AuthSyncProvider with ChangeNotifier {
         }
       }
     });
+  }
+
+  void _updateFinanceProfile(AuthUser user) {
+    String name =
+        (user.displayName != null && user.displayName!.trim().isNotEmpty)
+            ? user.displayName!.trim()
+            : '';
+    final String email = (user.email != null && user.email!.trim().isNotEmpty)
+        ? user.email!.trim()
+        : 'user@spendwise.app';
+
+    if (name.isEmpty) {
+      if (email.contains('@')) {
+        final prefix = email.split('@').first;
+        name = prefix.isNotEmpty
+            ? '${prefix[0].toUpperCase()}${prefix.substring(1)}'
+            : 'SpendWise User';
+      } else {
+        name = 'SpendWise User';
+      }
+    }
+
+    _financeProvider.updateProfile(name: name, email: email);
   }
 
   Future<void> _checkAndSyncOnLogin(AuthUser user) async {
@@ -120,7 +155,9 @@ class AuthSyncProvider with ChangeNotifier {
           await _authService.signInWithEmailAndPassword(email, password);
       _currentUser = user;
       _status = AuthStatus.authenticated;
+      _updateFinanceProfile(user);
       _setProcessing(false);
+      notifyListeners();
       await _checkAndSyncOnLogin(user);
       return true;
     } on AuthException catch (e) {
@@ -155,7 +192,9 @@ class AuthSyncProvider with ChangeNotifier {
       );
       _currentUser = user;
       _status = AuthStatus.authenticated;
+      _updateFinanceProfile(user);
       _setProcessing(false);
+      notifyListeners();
       await _checkAndSyncOnLogin(user);
       return true;
     } on AuthException catch (e) {
@@ -189,7 +228,9 @@ class AuthSyncProvider with ChangeNotifier {
 
       _currentUser = user;
       _status = AuthStatus.authenticated;
+      _updateFinanceProfile(user);
       _setProcessing(false);
+      notifyListeners();
       await _checkAndSyncOnLogin(user);
       return true;
     } on AuthException catch (e) {
@@ -227,6 +268,10 @@ class AuthSyncProvider with ChangeNotifier {
     _currentUser = null;
     _errorMessage = null;
     _syncStatus = SyncStatus.idle;
+    _financeProvider.updateProfile(
+      name: 'Guest User',
+      email: 'guest@spendwise.local',
+    );
     notifyListeners();
   }
 
@@ -243,6 +288,10 @@ class AuthSyncProvider with ChangeNotifier {
     _lastSyncTime = null;
     _hasPendingGuestMigration = false;
     _pendingGuestVault = null;
+    _financeProvider.updateProfile(
+      name: 'Guest User',
+      email: 'guest@spendwise.local',
+    );
     _setProcessing(false);
     notifyListeners();
   }
