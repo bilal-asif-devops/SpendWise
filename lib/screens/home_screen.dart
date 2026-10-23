@@ -16,9 +16,20 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final finance = Provider.of<FinanceProvider>(context);
     final authSync = Provider.of<AuthSyncProvider?>(context);
+    final authUser = authSync?.currentUser;
+    final bool isAuthenticated = authSync?.isAuthenticated ?? false;
+    final String? photoUrl = authUser?.photoUrl;
+
+    final String displayName = (authUser?.displayName != null &&
+            authUser!.displayName!.trim().isNotEmpty)
+        ? authUser.displayName!.trim()
+        : (finance.userName.isNotEmpty && finance.userName != 'Guest User'
+            ? finance.userName
+            : (isAuthenticated ? 'SpendWise User' : 'Guest User'));
 
     if (finance.expenses.isEmpty) {
-      return _buildEmptyHomeView(context, finance, authSync);
+      return _buildEmptyHomeView(
+          context, finance, authSync, displayName, photoUrl);
     }
 
     return Scaffold(
@@ -33,47 +44,66 @@ class HomeScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor:
-                            AppColors.accentGreen.withValues(alpha: 0.2),
-                        child: Text(
-                          finance.userName.isNotEmpty
-                              ? finance.userName[0].toUpperCase()
-                              : "B",
-                          style: const TextStyle(
-                            color: AppColors.accentGreen,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor:
+                              AppColors.accentGreen.withValues(alpha: 0.2),
+                          backgroundImage: (photoUrl != null &&
+                                  photoUrl.isNotEmpty &&
+                                  !photoUrl.contains('default-user'))
+                              ? NetworkImage(photoUrl)
+                              : null,
+                          onBackgroundImageError:
+                              photoUrl != null ? (_, __) {} : null,
+                          child: Text(
+                            displayName.isNotEmpty
+                                ? displayName[0].toUpperCase()
+                                : "G",
+                            style: const TextStyle(
+                              color: AppColors.accentGreen,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Hello, ${finance.userName}",
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textDark,
-                            ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Hello, $displayName",
+                                key: const Key('home_timeline_greeting'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                              const Text(
+                                "Wed, 14 Oct 2026 · You're on track",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
                           ),
-                          const Text(
-                            "Wed, 14 Oct 2026 · You're on track",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       if (authSync != null) ...[
                         _SyncStatusChip(authSync: authSync),
@@ -116,14 +146,19 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          "Safe-to-Spend (Next 30 Days):",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w500,
+                        const Flexible(
+                          child: Text(
+                            "Safe-to-Spend (Next 30 Days):",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
@@ -163,10 +198,14 @@ class HomeScreen extends StatelessWidget {
                         Icon(Icons.check_circle_outline,
                             color: AppColors.accentGreen, size: 14),
                         SizedBox(width: 6),
-                        Text(
-                          "Bills covered. Breathe a little easier.",
-                          style:
-                              TextStyle(fontSize: 11.5, color: Colors.white70),
+                        Expanded(
+                          child: Text(
+                            "Bills covered. Breathe a little easier.",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 11.5, color: Colors.white70),
+                          ),
                         ),
                       ],
                     ),
@@ -179,14 +218,19 @@ class HomeScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    "Your wallets",
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
+                  const Flexible(
+                    child: Text(
+                      "Your wallets",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     "Total: ${finance.currency}${finance.totalAllWalletsBalance.toStringAsFixed(0)}",
                     style: const TextStyle(
@@ -384,14 +428,19 @@ class HomeScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    "Upcoming bills",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
+                  const Flexible(
+                    child: Text(
+                      "Upcoming bills",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   InkWell(
                     borderRadius: BorderRadius.circular(8),
                     onTap: () {
@@ -458,14 +507,19 @@ class HomeScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    "Recent transactions",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
+                  const Flexible(
+                    child: Text(
+                      "Recent transactions",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     "See all (${finance.expenses.length})",
                     style: const TextStyle(
@@ -509,6 +563,8 @@ class HomeScreen extends StatelessWidget {
                             children: [
                               Text(
                                 item.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14.5,
@@ -518,28 +574,40 @@ class HomeScreen extends StatelessWidget {
                               const SizedBox(height: 2),
                               Row(
                                 children: [
-                                  Text(
-                                    item.category,
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textMuted),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 1.5),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.chipBackground,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
+                                  Flexible(
                                     child: Text(
-                                      item.walletName,
+                                      item.category,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                          fontSize: 10,
-                                          color: AppColors.primaryNavy,
-                                          fontWeight: FontWeight.w600),
+                                          fontSize: 12,
+                                          color: AppColors.textMuted),
                                     ),
                                   ),
+                                  if (item.walletName.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.chipBackground,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: ConstrainedBox(
+                                        constraints:
+                                            const BoxConstraints(maxWidth: 80),
+                                        child: Text(
+                                          item.walletName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontSize: 10,
+                                              color: AppColors.primaryNavy,
+                                              fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ],
@@ -728,7 +796,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildEmptyHomeView(BuildContext context, FinanceProvider finance,
-      AuthSyncProvider? authSync) {
+      AuthSyncProvider? authSync, String displayName, String? photoUrl) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -748,10 +816,14 @@ class HomeScreen extends StatelessWidget {
           CircleAvatar(
             radius: 18,
             backgroundColor: AppColors.accentGreen.withValues(alpha: 0.18),
+            backgroundImage: (photoUrl != null &&
+                    photoUrl.isNotEmpty &&
+                    !photoUrl.contains('default-user'))
+                ? NetworkImage(photoUrl)
+                : null,
+            onBackgroundImageError: photoUrl != null ? (_, __) {} : null,
             child: Text(
-              finance.userName.isNotEmpty
-                  ? finance.userName[0].toUpperCase()
-                  : "G",
+              displayName.isNotEmpty ? displayName[0].toUpperCase() : "G",
               style: const TextStyle(
                 color: AppColors.accentGreen,
                 fontWeight: FontWeight.bold,

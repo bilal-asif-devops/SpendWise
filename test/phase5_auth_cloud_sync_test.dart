@@ -655,5 +655,84 @@ void main() {
       expect(find.text('guest@spendwise.local'), findsOneWidget);
       expect(find.text('Free Tier • Local Storage'), findsOneWidget);
     });
+
+    testWidgets(
+        '23. Timeline (HomeScreen) greeting updates dynamically on Google Sign-In and fits without RenderFlex overflow at 400x642',
+        (tester) async {
+      tester.view.physicalSize = const Size(400, 642);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      // Add a test expense so HomeScreen renders the populated Timeline view
+      finance.addExpense(
+        title: 'Coffee',
+        amount: 5.5,
+        category: 'Food & Drinks',
+      );
+
+      await tester.pumpWidget(
+        createTestApp(
+          const HomeScreen(),
+        ),
+      );
+
+      // Verify guest greeting in Timeline
+      expect(find.byKey(const Key('home_timeline_greeting')), findsOneWidget);
+      expect(find.text('Hello, Guest User'), findsOneWidget);
+
+      // Sign in with Google
+      final success = await authSync.loginWithGoogle();
+      expect(success, isTrue);
+
+      // Re-pump widget
+      await tester.pumpAndSettle();
+
+      // Timeline greeting must immediately show authenticated user's name
+      expect(find.text('Hello, Google User'), findsOneWidget);
+
+      // Verify no RenderFlex overflow exception was thrown at 400x642
+      expect(tester.takeException(), isNull);
+
+      // Verify on larger desktop viewport as well
+      tester.view.physicalSize = const Size(1280, 800);
+      await tester.pumpAndSettle();
+      expect(find.text('Hello, Google User'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      // Sign out
+      await authSync.logout();
+      await tester.pumpAndSettle();
+      expect(find.text('Hello, Guest User'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+        '24. Settings truthfully displays "Account Connected • Firebase" when authenticated before sync and "Cloud Synced • Firebase" after successful sync',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      // Initially guest
+      await tester.pumpWidget(
+        createTestApp(
+          const SettingsScreen(),
+        ),
+      );
+      expect(find.text('Free Tier • Local Storage'), findsOneWidget);
+
+      // Sign in with Google
+      await authSync.loginWithGoogle();
+      await tester.pumpAndSettle();
+
+      // In LocalAuthService, loginWithGoogle completes syncVaultWithCloud -> Cloud Synced
+      expect(find.text('Cloud Synced • Firebase'), findsOneWidget);
+    });
   });
 }

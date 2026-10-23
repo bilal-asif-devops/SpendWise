@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/auth_models.dart';
 import '../services/auth_sync_provider.dart';
 import '../services/finance_provider.dart';
 import '../theme/app_theme.dart';
@@ -19,6 +20,43 @@ class _MoreScreenState extends State<MoreScreen> {
     final authUser = authSync?.currentUser;
     final bool isAuthenticated = authSync?.isAuthenticated ?? false;
     final String? photoUrl = authUser?.photoUrl;
+
+    final bool isSynced = authSync?.syncStatus == SyncStatus.synced &&
+        authSync?.lastSyncTime != null;
+    final bool isSyncing = authSync?.syncStatus == SyncStatus.syncing;
+    final bool isOffline = authSync?.syncStatus == SyncStatus.offline;
+
+    final String syncBadgeText;
+    final IconData syncBadgeIcon;
+    final Color syncBadgeColor;
+    final Color syncBadgeBg;
+
+    if (!isAuthenticated) {
+      syncBadgeText = "Spendee Recreation Edition • Guest";
+      syncBadgeIcon = Icons.shield_outlined;
+      syncBadgeColor = AppColors.textDark;
+      syncBadgeBg = AppColors.accentGreen.withValues(alpha: 0.15);
+    } else if (isSynced) {
+      syncBadgeText = "Cloud Synced • Firebase";
+      syncBadgeIcon = Icons.cloud_done_rounded;
+      syncBadgeColor = AppColors.accentGreen;
+      syncBadgeBg = Colors.green.shade50;
+    } else if (isSyncing) {
+      syncBadgeText = "Syncing to Cloud...";
+      syncBadgeIcon = Icons.sync_rounded;
+      syncBadgeColor = Colors.blue.shade700;
+      syncBadgeBg = Colors.blue.shade50;
+    } else if (isOffline) {
+      syncBadgeText = "Sync Pending • Offline";
+      syncBadgeIcon = Icons.cloud_off_rounded;
+      syncBadgeColor = Colors.orange.shade800;
+      syncBadgeBg = Colors.orange.shade50;
+    } else {
+      syncBadgeText = "Account Connected • Firebase";
+      syncBadgeIcon = Icons.cloud_outlined;
+      syncBadgeColor = Colors.blue.shade700;
+      syncBadgeBg = Colors.blue.shade50;
+    }
 
     final String displayName = (authUser?.displayName != null &&
             authUser!.displayName!.trim().isNotEmpty)
@@ -99,34 +137,23 @@ class _MoreScreenState extends State<MoreScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: isAuthenticated
-                                  ? Colors.green.shade50
-                                  : AppColors.accentGreen
-                                      .withValues(alpha: 0.15),
+                              color: syncBadgeBg,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  isAuthenticated
-                                      ? Icons.cloud_done_rounded
-                                      : Icons.shield_outlined,
+                                  syncBadgeIcon,
                                   size: 12,
-                                  color: isAuthenticated
-                                      ? AppColors.accentGreen
-                                      : AppColors.textMuted,
+                                  color: syncBadgeColor,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  isAuthenticated
-                                      ? "Cloud Synced • Firebase"
-                                      : "Spendee Recreation Edition • Guest",
+                                  syncBadgeText,
                                   style: TextStyle(
                                       fontSize: 11,
-                                      color: isAuthenticated
-                                          ? AppColors.accentGreen
-                                          : AppColors.textDark,
+                                      color: syncBadgeColor,
                                       fontWeight: FontWeight.bold),
                                 ),
                               ],
