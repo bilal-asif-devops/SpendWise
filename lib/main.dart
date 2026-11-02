@@ -6,6 +6,7 @@ import 'screens/splash_screen.dart';
 import 'services/auth_sync_provider.dart';
 import 'services/finance_provider.dart';
 import 'theme/app_theme.dart';
+import 'widgets/biometric_lock_guard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,8 +45,10 @@ class SpendWiseApp extends StatelessWidget {
             title: 'SpendWise',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            darkTheme: ThemeData.dark(useMaterial3: true),
+            darkTheme: AppTheme.darkTheme,
             themeMode: finance.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            builder: (context, child) =>
+                BiometricLockGuard(child: child ?? const SizedBox.shrink()),
             home: const SplashScreen(),
           );
         },

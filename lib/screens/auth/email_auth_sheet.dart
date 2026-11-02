@@ -35,6 +35,7 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
 
   AuthMode _mode = AuthMode.signIn;
   bool _obscurePassword = true;
+  bool _isLoadingGoogle = false;
   String? _localError;
   String? _successBanner;
 
@@ -44,6 +45,39 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
     _passwordController.dispose();
     _nameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    final authProvider = context.read<AuthSyncProvider>();
+    setState(() {
+      _isLoadingGoogle = true;
+      _localError = null;
+      _successBanner = null;
+    });
+
+    final success = await authProvider.loginWithGoogle();
+    if (!mounted) return;
+    setState(() => _isLoadingGoogle = false);
+
+    if (success) {
+      if (authProvider.hasPendingGuestMigration) {
+        final shouldMigrate = await GuestMigrationDialog.show(context);
+        if (mounted && shouldMigrate != null) {
+          await authProvider.resolveGuestMigration(
+            mergeGuestData: shouldMigrate,
+          );
+        }
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onSuccess?.call();
+      }
+    } else {
+      setState(() {
+        _localError = authProvider.errorMessage ?? 'Google Sign-In failed.';
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -119,6 +153,14 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
     final authProvider = context.watch<AuthSyncProvider>();
     final isLoading = authProvider.isProcessing;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1E293B) : AppColors.surfaceWhite;
+    final textPrimary = isDark ? const Color(0xFFF8FAFC) : AppColors.textDark;
+    final textMuted = isDark ? const Color(0xFF94A3B8) : AppColors.textMuted;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.grey.shade50;
+    final borderColor =
+        isDark ? const Color(0xFF334155) : AppColors.borderLight;
+
     return Container(
       padding: EdgeInsets.only(
         top: 24,
@@ -126,9 +168,9 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
         right: 24,
         bottom: bottomInset + 24,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceWhite,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SingleChildScrollView(
         child: Form(
@@ -144,7 +186,7 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -157,10 +199,10 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
                     : _mode == AuthMode.signUp
                         ? 'Create an Account'
                         : 'Reset Password',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textDark,
+                  color: textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -170,9 +212,9 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
                     : _mode == AuthMode.signUp
                         ? 'Create a secure account to sync your finances across devices.'
                         : 'Enter your email address to receive a password reset link.',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.textMuted,
+                  color: textMuted,
                   height: 1.3,
                 ),
               ),
@@ -240,21 +282,96 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
                 const SizedBox(height: 16),
               ],
 
+              // Google Sign-In Button (for Sign In and Sign Up)
+              if (_mode != AuthMode.forgotPassword) ...[
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton(
+                    key: const Key('email_sheet_google_button'),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: cardBg,
+                      side: BorderSide(color: borderColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: (_isLoadingGoogle || isLoading)
+                        ? null
+                        : _handleGoogleSignIn,
+                    child: _isLoadingGoogle
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'G',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF4285F4),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Continue with Google',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: borderColor)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'OR WITH EMAIL',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: textMuted,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: borderColor)),
+                  ],
+                ),
+                const SizedBox(height: 18),
+              ],
+
               // Name Field (only sign up)
               if (_mode == AuthMode.signUp) ...[
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
+                  style: TextStyle(color: textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Full Name',
+                    labelStyle: TextStyle(color: textMuted),
                     hintText: 'e.g. John Doe',
-                    prefixIcon: const Icon(Icons.person_outline_rounded),
+                    hintStyle: TextStyle(color: textMuted),
+                    prefixIcon:
+                        Icon(Icons.person_outline_rounded, color: textMuted),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: cardBg,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide:
-                          const BorderSide(color: AppColors.borderLight),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: borderColor),
                     ),
                   ),
                   validator: (v) {
@@ -272,15 +389,23 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
+                style: TextStyle(color: textPrimary),
                 decoration: InputDecoration(
                   labelText: 'Email Address',
+                  labelStyle: TextStyle(color: textMuted),
                   hintText: 'name@example.com',
-                  prefixIcon: const Icon(Icons.mail_outline_rounded),
+                  hintStyle: TextStyle(color: textMuted),
+                  prefixIcon:
+                      Icon(Icons.mail_outline_rounded, color: textMuted),
                   filled: true,
-                  fillColor: Colors.grey.shade50,
+                  fillColor: cardBg,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.borderLight),
+                    borderSide: BorderSide(color: borderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: borderColor),
                   ),
                 ),
                 validator: (v) {
@@ -300,24 +425,31 @@ class _EmailAuthSheetState extends State<EmailAuthSheet> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  style: TextStyle(color: textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    labelStyle: TextStyle(color: textMuted),
+                    prefixIcon:
+                        Icon(Icons.lock_outline_rounded, color: textMuted),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
                             ? Icons.visibility_off_outlined
                             : Icons.visibility_outlined,
+                        color: textMuted,
                       ),
                       onPressed: () =>
                           setState(() => _obscurePassword = !_obscurePassword),
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: cardBg,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide:
-                          const BorderSide(color: AppColors.borderLight),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: borderColor),
                     ),
                   ),
                   validator: (v) {

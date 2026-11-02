@@ -314,9 +314,11 @@ class Budget {
   });
 
   double get percentageSpent =>
-      targetAmount > 0 ? (spentAmount / targetAmount).clamp(0.0, 2.0) : 0.0;
+      targetAmount > 0 ? (spentAmount / targetAmount) : 0.0;
   double get remainingAmount =>
       (targetAmount - spentAmount).clamp(0.0, double.infinity);
+  double get netRemaining => targetAmount - spentAmount;
+  bool get isOverBudget => spentAmount > targetAmount;
 
   Map<String, dynamic> toJson() => {
         'id': id,

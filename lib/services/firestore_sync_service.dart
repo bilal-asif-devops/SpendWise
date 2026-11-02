@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import '../models/auth_models.dart';
@@ -7,15 +8,74 @@ import 'statement_importer.dart';
 import '../models/models.dart';
 
 class FirestoreSyncService implements CloudSyncService {
+  final FirebaseFirestore? _firestore;
+  final fb.FirebaseAuth? _auth;
+  final String? Function()? _currentUidResolver;
+
+  FirestoreSyncService({
+    FirebaseFirestore? firestore,
+    fb.FirebaseAuth? auth,
+    @visibleForTesting String? Function()? currentUidResolver,
+  })  : _firestore = firestore,
+        _auth = auth,
+        _currentUidResolver = currentUidResolver;
+
   @override
-  bool get isConfigured => Firebase.apps.isNotEmpty;
+  bool get isConfigured =>
+      _firestore != null ||
+      _currentUidResolver != null ||
+      Firebase.apps.isNotEmpty;
+
+  FirebaseFirestore get _db => _firestore ?? FirebaseFirestore.instance;
+  fb.FirebaseAuth get _firebaseAuth => _auth ?? fb.FirebaseAuth.instance;
+
+  bool get _isFirebaseAppReady {
+    try {
+      return Firebase.apps.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String? get currentUserId {
+    if (_currentUidResolver != null) {
+      return _currentUidResolver!();
+    }
+    if (_auth != null || _isFirebaseAppReady) {
+      try {
+        return _firebaseAuth.currentUser?.uid;
+      } catch (e) {
+        debugPrint('FirestoreSyncService currentUserId error: $e');
+        return null;
+      }
+    }
+    return null;
+  }
 
   DocumentReference<Map<String, dynamic>> _vaultDoc(String userId) {
-    return FirebaseFirestore.instance
+    return _db
         .collection('users')
         .doc(userId)
         .collection('vault')
         .doc('current');
+  }
+
+  /// Builds a compliant Firestore vault payload containing all mandatory security
+  /// schema fields (`updatedBy`, `clientTimestamp`, `lastUpdated`, `serverSyncedAt`)
+  /// alongside the serialized financial vault collections.
+  static Map<String, dynamic> buildUploadPayload({
+    required String userId,
+    required Map<String, dynamic> vaultData,
+    DateTime? clientTime,
+    dynamic serverTimestamp,
+  }) {
+    final now = clientTime ?? DateTime.now();
+    final payload = Map<String, dynamic>.from(vaultData);
+    payload['lastUpdated'] = now.toIso8601String();
+    payload['updatedBy'] = userId;
+    payload['clientTimestamp'] = now.millisecondsSinceEpoch;
+    payload['serverSyncedAt'] = serverTimestamp ?? FieldValue.serverTimestamp();
+    return payload;
   }
 
   @override
@@ -24,14 +84,27 @@ class FirestoreSyncService implements CloudSyncService {
     required Map<String, dynamic> vaultData,
   }) async {
     _ensureConfigured();
+
+    // Verify authenticated user UID matches target userId
+    final authenticatedUid = currentUserId;
+    if (authenticatedUid == null || authenticatedUid != userId) {
+      throw const AuthException(
+        message:
+            'Permission denied: Authenticated user does not match target user ID.',
+        code: 'permission-denied',
+      );
+    }
+
     try {
       final docRef = _vaultDoc(userId);
-      final payload = Map<String, dynamic>.from(vaultData);
-      payload['lastUpdated'] = DateTime.now().toIso8601String();
-      payload['serverSyncedAt'] = FieldValue.serverTimestamp();
+      final payload = buildUploadPayload(
+        userId: userId,
+        vaultData: vaultData,
+      );
 
       await docRef.set(payload, SetOptions(merge: true));
     } catch (e) {
+      if (e is AuthException) rethrow;
       debugPrint('Firestore uploadVault error: $e');
       throw AuthException(
         message: 'Cloud sync upload failed: $e',
@@ -46,14 +119,26 @@ class FirestoreSyncService implements CloudSyncService {
     required String userId,
   }) async {
     _ensureConfigured();
+
+    // Verify authenticated user UID matches target userId
+    final authenticatedUid = currentUserId;
+    if (authenticatedUid == null || authenticatedUid != userId) {
+      throw const AuthException(
+        message:
+            'Permission denied: Authenticated user does not match target user ID.',
+        code: 'permission-denied',
+      );
+    }
+
     try {
       final docRef = _vaultDoc(userId);
       final snapshot = await docRef.get();
       if (!snapshot.exists || snapshot.data() == null) {
         return null;
       }
-      return snapshot.data();
+      return _sanitizeFirestoreData(snapshot.data()!);
     } catch (e) {
+      if (e is AuthException) rethrow;
       debugPrint('Firestore downloadVault error: $e');
       throw AuthException(
         message: 'Cloud sync download failed: $e',
@@ -61,6 +146,31 @@ class FirestoreSyncService implements CloudSyncService {
         originalError: e,
       );
     }
+  }
+
+  Map<String, dynamic> _sanitizeFirestoreData(Map<String, dynamic> raw) {
+    final Map<String, dynamic> clean = {};
+    for (final entry in raw.entries) {
+      final key = entry.key;
+      final value = entry.value;
+      if (value is Map<String, dynamic>) {
+        clean[key] = _sanitizeFirestoreData(value);
+      } else if (value is List) {
+        clean[key] = value.map((item) {
+          if (item is Map<String, dynamic>) {
+            return _sanitizeFirestoreData(item);
+          } else if (item is Timestamp) {
+            return item.toDate().toIso8601String();
+          }
+          return item;
+        }).toList();
+      } else if (value is Timestamp) {
+        clean[key] = value.toDate().toIso8601String();
+      } else {
+        clean[key] = value;
+      }
+    }
+    return clean;
   }
 
   @override

@@ -15,7 +15,7 @@ class WalletsScreen extends StatelessWidget {
     final finance = Provider.of<FinanceProvider>(context);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,7 +67,7 @@ class WalletsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "LIQUID CASH Â· SAFE-TO-SPEND ENGINE",
+                      "LIQUID CASH • SAFE-TO-SPEND ENGINE",
                       style: TextStyle(
                           fontSize: 11,
                           color: Colors.white70,
@@ -77,17 +77,23 @@ class WalletsScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          "${finance.currency}${finance.totalLiquidBalance.toStringAsFixed(2)}",
-                          style: const TextStyle(
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              "${finance.currency}${finance.totalLiquidBalance.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                fontSize: 34,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           "All wallets: ${finance.currency}${finance.totalAllWalletsBalance.toStringAsFixed(0)}",
                           style: TextStyle(

@@ -4,11 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:spendwise/screens/home_screen.dart';
 import 'package:spendwise/screens/onboarding/auth_screen.dart';
 import 'package:spendwise/screens/onboarding/exit_offer_dialog.dart';
+import 'package:spendwise/screens/onboarding/onboarding_flow_screen.dart';
 import 'package:spendwise/screens/onboarding/paywall_screen.dart';
-import 'package:spendwise/screens/onboarding/reminders_screen.dart';
-import 'package:spendwise/screens/onboarding/survey_goals_screen.dart';
-import 'package:spendwise/screens/onboarding/survey_habits_screen.dart';
-import 'package:spendwise/screens/onboarding/survey_sentiment_screen.dart';
 import 'package:spendwise/services/finance_provider.dart';
 import 'package:spendwise/services/storage_service.dart';
 import 'package:spendwise/theme/app_theme.dart';
@@ -122,63 +119,8 @@ void main() {
   });
 
   group('Phase 2: Onboarding Flow Widget Tests', () {
-    testWidgets('6. SurveySentimentScreen renders all options and advances',
-        (tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      String? selected;
-      bool continued = false;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: StatefulBuilder(
-              builder: (context, setState) {
-                return SurveySentimentScreen(
-                  selectedSentiment: selected,
-                  onSelect: (val) => setState(() => selected = val),
-                  onContinue: () => continued = true,
-                );
-              },
-            ),
-          ),
-        ),
-      );
-
-      // Verify header and question
-      expect(find.text('How do you feel about your finances today?'),
-          findsOneWidget);
-      expect(find.text('Stressed'), findsOneWidget);
-      expect(find.text('Unsure'), findsOneWidget);
-      expect(find.text('Stable'), findsOneWidget);
-      expect(find.text('Confident'), findsOneWidget);
-
-      // Continue button should be disabled initially
-      final continueButtonFinder =
-          find.widgetWithText(ElevatedButton, 'Continue');
-      expect(continueButtonFinder, findsOneWidget);
-
-      // Tap 'Confident'
-      await tester.tap(find.text('Confident'));
-      await tester.pumpAndSettle();
-
-      expect(selected, equals('confident'));
-
-      // Tap Continue
-      await tester.tap(continueButtonFinder);
-      await tester.pumpAndSettle();
-
-      expect(continued, isTrue);
-    });
-
     testWidgets(
-        '7. SurveyGoalsScreen supports multi-select and navigation callbacks',
+        '6. Fresh-install displays Screen 1: Track Every Expense headline, description, and visual',
         (tester) async {
       tester.view.physicalSize = const Size(800, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -187,141 +129,180 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      final selectedGoals = <String>{'emergency'};
-      bool backTapped = false;
-      bool continueTapped = false;
+      final finance = FinanceProvider(storageService: MockStorageService());
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: StatefulBuilder(
-              builder: (context, setState) {
-                return SurveyGoalsScreen(
-                  selectedGoals: selectedGoals,
-                  onToggleGoal: (id) {
-                    setState(() {
-                      if (selectedGoals.contains(id)) {
-                        selectedGoals.remove(id);
-                      } else {
-                        selectedGoals.add(id);
-                      }
-                    });
-                  },
-                  onBack: () => backTapped = true,
-                  onContinue: () => continueTapped = true,
-                );
-              },
-            ),
+        ChangeNotifierProvider<FinanceProvider>.value(
+          value: finance,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const OnboardingFlowScreen(),
           ),
         ),
       );
-
-      expect(find.text('Are you saving, or planning to, for any of these?'),
-          findsOneWidget);
-      expect(find.text('Emergency fund'), findsOneWidget);
-      expect(find.text('Retirement'), findsOneWidget);
-
-      // Toggle 'Retirement' on
-      await tester.tap(find.text('Retirement'));
       await tester.pumpAndSettle();
-      expect(selectedGoals, contains('retirement'));
-      expect(selectedGoals, contains('emergency'));
 
-      // Tap back button
-      await tester.tap(find.byIcon(Icons.arrow_back_ios_new_rounded));
-      await tester.pumpAndSettle();
-      expect(backTapped, isTrue);
-
-      // Tap continue button
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
-      expect(continueTapped, isTrue);
-    });
-
-    testWidgets('8. SurveyHabitsScreen selects habit and continues',
-        (tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      String? selectedHabit;
-      bool continued = false;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: StatefulBuilder(
-              builder: (context, setState) {
-                return SurveyHabitsScreen(
-                  selectedHabit: selectedHabit,
-                  onSelect: (val) => setState(() => selectedHabit = val),
-                  onBack: () {},
-                  onContinue: () => continued = true,
-                );
-              },
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('How easy is it for you to stick to new habits?'),
-          findsOneWidget);
-      expect(find.text("I'm a habit pro"), findsOneWidget);
-      expect(find.text('Reminders really help me'), findsOneWidget);
-
-      await tester.tap(find.text('Reminders really help me'));
-      await tester.pumpAndSettle();
-      expect(selectedHabit, equals('reminders_help'));
-
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-      await tester.pumpAndSettle();
-      expect(continued, isTrue);
-    });
-
-    testWidgets(
-        '9. RemindersScreen explains reminders and distinguishes OS permissions',
-        (tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      bool enabled = false;
-      bool skipped = false;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: RemindersScreen(
-            onEnableReminders: () => enabled = true,
-            onSkip: () => skipped = true,
-          ),
-        ),
-      );
-
-      expect(find.text('Users who turn on reminders are 2x more consistent'),
-          findsOneWidget);
+      // Screen 1: Track Every Expense
+      expect(find.text('Know where your money goes.'), findsOneWidget);
       expect(
-          find.textContaining(
-              'This enables your reminder preference in SpendWise'),
+        find.text(
+            'Track your daily spending and keep all your expenses organized in one place.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('onboarding_skip_button')), findsOneWidget);
+      expect(find.byKey(const Key('onboarding_next_button')), findsOneWidget);
+      expect(find.text('SpendWise'), findsOneWidget);
+    });
+
+    testWidgets(
+        '7. Next button advances through Screen 1 -> Screen 2 -> Screen 3 carousel pages',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final finance = FinanceProvider(storageService: MockStorageService());
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<FinanceProvider>.value(
+          value: finance,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const OnboardingFlowScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Screen 1
+      expect(find.text('Know where your money goes.'), findsOneWidget);
+
+      // Tap Next to advance to Screen 2
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
+      await tester.pumpAndSettle();
+
+      // Screen 2: Build Better Budgets
+      expect(find.text('Make your money go further.'), findsOneWidget);
+      expect(
+        find.text(
+            'Set budgets, monitor your progress and stay in control of your spending.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('onboarding_skip_button')), findsOneWidget);
+
+      // Tap Next to advance to Screen 3
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
+      await tester.pumpAndSettle();
+
+      // Screen 3: Understand Your Finances
+      expect(find.text('Make smarter money decisions.'), findsOneWidget);
+      expect(
+        find.text(
+            'Turn your financial activity into clear insights that help you plan ahead.'),
+        findsOneWidget,
+      );
+      // Skip should be hidden on Screen 3
+      expect(find.byKey(const Key('onboarding_skip_button')), findsNothing);
+      // Prominent Get Started button appears
+      expect(find.byKey(const Key('onboarding_get_started_button')),
           findsOneWidget);
+    });
 
-      // Tap 'Turn on reminders'
-      await tester.tap(find.text('Turn on reminders'));
-      await tester.pumpAndSettle();
-      expect(enabled, isTrue);
+    testWidgets(
+        '8. Skip button on Screen 1 and Screen 2 immediately opens AuthScreen and persists completion',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
-      // Tap 'Skip'
-      await tester.tap(find.text('Skip'));
+      final storage = MockStorageService();
+      final finance = FinanceProvider(storageService: storage);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<FinanceProvider>.value(
+          value: finance,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const OnboardingFlowScreen(),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
-      expect(skipped, isTrue);
+
+      // Tap Skip on Screen 1
+      await tester.tap(find.byKey(const Key('onboarding_skip_button')));
+      await tester.pumpAndSettle();
+
+      // Verified: Navigated to AuthScreen immediately
+      expect(find.byType(AuthScreen), findsOneWidget);
+      expect(find.text('Save your financial journey'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
+      expect(find.text('Sign up with Email'), findsOneWidget);
+      expect(find.text('Explore as Guest'), findsOneWidget);
+
+      // Verified: Onboarding completion persisted
+      expect(finance.hasCompletedOnboarding, isTrue);
+
+      // Verified: Back button pops back to OnboardingFlowScreen
+      expect(find.byKey(const Key('auth_back_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('auth_back_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(OnboardingFlowScreen), findsOneWidget);
+    });
+
+    testWidgets(
+        '9. Screen 3 Get Started opens AuthScreen and responsive 400x642 viewport renders without overflow',
+        (tester) async {
+      // Test at the exact constrained 400 x 642 viewport specified in requirements
+      tester.view.physicalSize = const Size(400, 642);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final finance = FinanceProvider(storageService: MockStorageService());
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<FinanceProvider>.value(
+          value: finance,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const OnboardingFlowScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verified no RenderFlex overflow on Screen 1 at 400x642
+      expect(tester.takeException(), isNull);
+      expect(find.text('Know where your money goes.'), findsOneWidget);
+
+      // Advance to Screen 2
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Make your money go further.'), findsOneWidget);
+
+      // Advance to Screen 3
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Make smarter money decisions.'), findsOneWidget);
+
+      // Tap Get Started
+      await tester.tap(find.byKey(const Key('onboarding_get_started_button')));
+      await tester.pumpAndSettle();
+
+      // Reached AuthScreen
+      expect(find.byType(AuthScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('10. PaywallScreen displays value card and plan bottom sheet',
@@ -434,7 +415,7 @@ void main() {
 
       expect(find.text('Save your financial journey'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);
-      expect(find.text('Continue with Apple'), findsOneWidget);
+      expect(find.text('Continue with Apple'), findsNothing);
       expect(find.text('Sign up with Email'), findsOneWidget);
       expect(find.text('Explore as Guest'), findsOneWidget);
 

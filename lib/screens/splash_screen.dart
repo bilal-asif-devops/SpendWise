@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/auth_sync_provider.dart';
 import '../services/finance_provider.dart';
 import '../theme/app_theme.dart';
 import 'main_navigation.dart';
@@ -51,37 +52,44 @@ class _SplashScreenState extends State<SplashScreen>
     });
 
     // Fallback timer to ensure navigation if already initialized
-    _fallbackTimer = Timer(const Duration(milliseconds: 1400), () {
+    _fallbackTimer = Timer(const Duration(milliseconds: 1800), () {
       if (mounted) {
         _navigate();
       }
     });
   }
 
-  void _checkInitializationAndNavigate() {
+  Future<void> _checkInitializationAndNavigate() async {
     final finance = Provider.of<FinanceProvider>(context, listen: false);
-    if (finance.isInitialized) {
-      Timer(const Duration(milliseconds: 1000), () {
-        if (mounted) _navigate();
-      });
-    } else {
-      finance.addListener(_onFinanceUpdate);
-    }
-  }
+    final authSync = Provider.of<AuthSyncProvider?>(context, listen: false);
 
-  void _onFinanceUpdate() {
-    final finance = Provider.of<FinanceProvider>(context, listen: false);
-    if (finance.isInitialized && mounted) {
-      finance.removeListener(_onFinanceUpdate);
+    try {
+      await Future.wait([
+        if (!finance.isInitialized) finance.initializationFuture,
+        if (authSync != null && !authSync.isAuthInitialized)
+          authSync.ensureInitialized,
+      ]).timeout(const Duration(milliseconds: 1200));
+    } catch (_) {
+      // Safe fallback on timeout
+    }
+
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) {
       _navigate();
     }
   }
 
   void _navigate() {
     _fallbackTimer?.cancel();
-    final finance = Provider.of<FinanceProvider>(context, listen: false);
+    if (!mounted) return;
 
-    final Widget destination = finance.hasCompletedOnboarding
+    final finance = Provider.of<FinanceProvider>(context, listen: false);
+    final authSync = Provider.of<AuthSyncProvider?>(context, listen: false);
+
+    final bool isAuthenticated = authSync?.isAuthenticated ?? false;
+    final bool hasCompletedOnboarding = finance.hasCompletedOnboarding;
+
+    final Widget destination = (isAuthenticated || hasCompletedOnboarding)
         ? const MainNavigationScreen()
         : const OnboardingFlowScreen();
 

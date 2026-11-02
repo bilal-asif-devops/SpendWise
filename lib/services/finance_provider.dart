@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import 'storage_service.dart';
@@ -11,6 +12,10 @@ class StatementImportSummary {
   final double netBalanceChange;
   final String accountName;
   final List<String> errorMessages;
+  final String? batchId;
+  final int incomingCount;
+  final int outgoingCount;
+  final int transferCount;
 
   const StatementImportSummary({
     required this.totalRows,
@@ -20,6 +25,10 @@ class StatementImportSummary {
     required this.netBalanceChange,
     required this.accountName,
     this.errorMessages = const [],
+    this.batchId,
+    this.incomingCount = 0,
+    this.outgoingCount = 0,
+    this.transferCount = 0,
   });
 }
 
@@ -128,6 +137,10 @@ class FinanceProvider with ChangeNotifier {
     return safeToSpendBalance / remainingDays;
   }
 
+  final Completer<void> _initCompleter = Completer<void>();
+  Future<void> get initializationFuture => _initCompleter.future;
+  void Function(Map<String, dynamic> vaultData)? onVaultChanged;
+
   // Data Initialization
   Future<void> _initializeData() async {
     try {
@@ -140,6 +153,9 @@ class FinanceProvider with ChangeNotifier {
       debugPrint("FinanceProvider: Vault load error: $e");
     }
     _isInitialized = true;
+    if (!_initCompleter.isCompleted) {
+      _initCompleter.complete();
+    }
   }
 
   void seedDefaultSampleData() {
@@ -344,16 +360,147 @@ class FinanceProvider with ChangeNotifier {
       999,
     );
 
-    final isAllCategories = budget.category.toLowerCase() == 'all' ||
-        budget.category.toLowerCase() == 'general' ||
-        budget.category.toLowerCase() == 'general discretionary';
+    final budgetCat = budget.category.trim().toLowerCase();
+    final isAllCategories = budgetCat.isEmpty ||
+        budgetCat == 'all' ||
+        budgetCat == 'general' ||
+        budgetCat == 'general discretionary' ||
+        budgetCat == 'total' ||
+        budgetCat == 'overall';
 
     return _expenses.where((e) {
+      // Must be an actual expense (not income and not transfers)
+      if (e.type != TransactionType.expense) return false;
+      if (!e.amount.isFinite || e.amount.isNaN || e.amount <= 0) return false;
+
       final inRange = !e.date.isBefore(startOfDay) && !e.date.isAfter(endOfDay);
       if (!inRange) return false;
       if (isAllCategories) return true;
-      return e.category.toLowerCase() == budget.category.toLowerCase();
+
+      final expCat = e.category.trim().toLowerCase();
+      return expCat == budgetCat ||
+          expCat.contains(budgetCat) ||
+          budgetCat.contains(expCat);
     }).fold(0.0, (sum, e) => sum + e.amount);
+  }
+
+  /// Calculates the remaining days in the budget period.
+  /// If today is after the end date, returns 0.
+  /// If today is before the start date, returns the total duration in days.
+  /// If today is within the period, returns remaining days inclusive of today.
+  int calculateBudgetDaysRemaining(Budget budget, [DateTime? asOf]) {
+    final now = asOf ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final periodStart = DateTime(
+      budget.startDate.year,
+      budget.startDate.month,
+      budget.startDate.day,
+    );
+    final periodEnd = DateTime(
+      budget.endDate.year,
+      budget.endDate.month,
+      budget.endDate.day,
+    );
+
+    if (today.isAfter(periodEnd)) {
+      return 0;
+    }
+    if (today.isBefore(periodStart)) {
+      return periodEnd.difference(periodStart).inDays + 1;
+    }
+    return periodEnd.difference(today).inDays + 1;
+  }
+
+  /// Calculates the daily allowable spend for a specific budget.
+  /// Accurately divides remaining budget by remaining days.
+  /// Returns 0.0 if the budget is exhausted, overspent, or if target <= 0.
+  double calculateDailyBudgetAllowance(Budget budget, [DateTime? asOf]) {
+    final spent = calculateBudgetSpent(budget);
+    final remaining = budget.targetAmount - spent;
+    if (remaining <= 0 || budget.targetAmount <= 0) {
+      return 0.0;
+    }
+    final daysLeft = calculateBudgetDaysRemaining(budget, asOf);
+    if (daysLeft <= 0) {
+      return 0.0;
+    }
+    return remaining / daysLeft;
+  }
+
+  /// Computes cumulative spending per day (day 1..today) for a budget.
+  /// Decoupled from UI charting widgets.
+  Map<int, double> getBudgetCumulativeSpending(Budget budget,
+      [DateTime? asOf]) {
+    final now = asOf ?? DateTime.now();
+    final periodStart = DateTime(
+      budget.startDate.year,
+      budget.startDate.month,
+      budget.startDate.day,
+    );
+    final periodEnd = DateTime(
+      budget.endDate.year,
+      budget.endDate.month,
+      budget.endDate.day,
+      23,
+      59,
+      59,
+      999,
+    );
+    final totalDays = budget.endDate.difference(budget.startDate).inDays + 1;
+    if (totalDays <= 0) return {1: 0.0};
+
+    final today = DateTime(now.year, now.month, now.day);
+    int maxDay;
+    if (today.isBefore(periodStart)) {
+      maxDay = 1;
+    } else if (today.isAfter(DateTime(
+        budget.endDate.year, budget.endDate.month, budget.endDate.day))) {
+      maxDay = totalDays;
+    } else {
+      maxDay = today.difference(periodStart).inDays + 1;
+    }
+
+    final budgetCat = budget.category.trim().toLowerCase();
+    final isAll = budgetCat.isEmpty ||
+        budgetCat == 'all' ||
+        budgetCat == 'general' ||
+        budgetCat == 'general discretionary' ||
+        budgetCat == 'total' ||
+        budgetCat == 'overall';
+
+    final matching = _expenses.where((e) {
+      if (e.type != TransactionType.expense) return false;
+      if (!e.amount.isFinite || e.amount.isNaN || e.amount <= 0) return false;
+      if (e.date.isBefore(periodStart) || e.date.isAfter(periodEnd)) {
+        return false;
+      }
+      if (isAll) return true;
+      final expCat = e.category.trim().toLowerCase();
+      return expCat == budgetCat ||
+          expCat.contains(budgetCat) ||
+          budgetCat.contains(expCat);
+    }).toList();
+
+    final Map<int, double> dailySpending = {};
+    for (final exp in matching) {
+      final expDay = DateTime(exp.date.year, exp.date.month, exp.date.day);
+      final dayOffset = expDay.difference(periodStart).inDays + 1;
+      if (dayOffset >= 1 && dayOffset <= totalDays) {
+        dailySpending[dayOffset] =
+            (dailySpending[dayOffset] ?? 0.0) + exp.amount;
+      }
+    }
+
+    final Map<int, double> cumulativeMap = {};
+    double runningTotal = 0.0;
+    for (int d = 1; d <= maxDay; d++) {
+      runningTotal += dailySpending[d] ?? 0.0;
+      cumulativeMap[d] = runningTotal;
+    }
+    if (cumulativeMap.isEmpty) {
+      cumulativeMap[1] = 0.0;
+    }
+    return cumulativeMap;
   }
 
   void _recalculateBudgets() {
@@ -361,6 +508,23 @@ class FinanceProvider with ChangeNotifier {
       final spent = calculateBudgetSpent(b);
       return b.copyWith(spentAmount: spent);
     }).toList();
+  }
+
+  void updateBudget(Budget updatedBudget) {
+    final idx = _budgets.indexWhere((b) => b.id == updatedBudget.id);
+    if (idx != -1) {
+      _budgets[idx] = updatedBudget;
+      _recalculateBudgets();
+      notifyListeners();
+      _persistToStorage();
+    }
+  }
+
+  void deleteBudget(String budgetId) {
+    _budgets.removeWhere((b) => b.id == budgetId);
+    _recalculateBudgets();
+    notifyListeners();
+    _persistToStorage();
   }
 
   // Actions & Mutations
@@ -373,6 +537,7 @@ class FinanceProvider with ChangeNotifier {
     String? currency,
     double? exchangeRate,
     List<String>? tags,
+    DateTime? date,
   }) {
     if (!amount.isFinite || amount.isNaN || amount <= 0) {
       _lastErrorMessage =
@@ -412,7 +577,7 @@ class FinanceProvider with ChangeNotifier {
         title: title,
         category: category,
         amount: amount,
-        date: DateTime.now(),
+        date: date ?? DateTime.now(),
         icon: _getCategoryIcon(category),
         accountId: targetAccount?.id ?? "cash_wallet",
         walletName: targetAccount?.name ?? "Cash",
@@ -439,6 +604,7 @@ class FinanceProvider with ChangeNotifier {
     String? currency,
     double? exchangeRate,
     List<String>? tags,
+    DateTime? date,
   }) {
     if (!amount.isFinite || amount.isNaN || amount <= 0) {
       _lastErrorMessage =
@@ -478,7 +644,7 @@ class FinanceProvider with ChangeNotifier {
         title: title,
         category: category,
         amount: amount,
-        date: DateTime.now(),
+        date: date ?? DateTime.now(),
         icon: _getCategoryIcon(category),
         accountId: targetAccount?.id ?? "cash_wallet",
         walletName: targetAccount?.name ?? "Cash",
@@ -491,6 +657,13 @@ class FinanceProvider with ChangeNotifier {
       ),
     );
 
+    notifyListeners();
+    _persistToStorage();
+  }
+
+  void addCustomExpense(Expense expense) {
+    _expenses.insert(0, expense);
+    _recalculateBudgets();
     notifyListeners();
     _persistToStorage();
   }
@@ -726,9 +899,13 @@ class FinanceProvider with ChangeNotifier {
     int importedCount = 0;
     int duplicateCount = 0;
     int invalidCount = 0;
+    int incomingCount = 0;
+    int outgoingCount = 0;
+    int transferCount = 0;
     double netBalanceChange = 0.0;
     final errorMessages = <String>[];
     final newExpenses = <Expense>[];
+    final batchId = "batch_${DateTime.now().millisecondsSinceEpoch}";
 
     double currentBalance = targetAccount.balance;
 
@@ -755,6 +932,7 @@ class FinanceProvider with ChangeNotifier {
               description: rec.description,
               amount: rec.amount,
               type: rec.type,
+              occurrenceIndex: rec.occurrenceIndex,
             );
 
       if (existingHashes.contains(fp)) {
@@ -764,20 +942,26 @@ class FinanceProvider with ChangeNotifier {
 
       existingHashes.add(fp);
 
+      final finalCategory = (rec.category.isNotEmpty &&
+              rec.category != 'General')
+          ? rec.category
+          : (rec.type == TransactionType.income ? "Income" : "Uncategorized");
+
       final exp = Expense(
         id: "stmt_${DateTime.now().microsecondsSinceEpoch}_$importedCount",
         title: rec.description,
-        category: rec.category.isNotEmpty
-            ? rec.category
-            : (rec.type == TransactionType.income ? "Salary" : "Other"),
+        category: finalCategory,
         amount: rec.amount,
         date: rec.date ?? DateTime.now(),
-        icon: _getCategoryIcon(rec.category),
+        icon: _getCategoryIcon(finalCategory),
         accountId: targetAccount.id,
         walletName: targetAccount.name,
         currency: targetAccount.currency,
         type: rec.type,
-        note: "Imported transaction",
+        toAccountId: rec.transferTargetAccountId,
+        toWalletName: rec.transferTargetWalletName,
+        note: "Imported bank record [$batchId]",
+        tags: ["imported_bank_record", batchId],
         importHash: fp,
       );
 
@@ -785,23 +969,43 @@ class FinanceProvider with ChangeNotifier {
       importedCount++;
 
       // Update account balance
-      if (targetAccount.type == AccountType.credit) {
+      if (rec.type == TransactionType.transfer &&
+          rec.transferTargetAccountId != null) {
+        transferCount++;
+        // Internal transfer: decrease source account, increase target account
+        currentBalance -= rec.amount;
+        netBalanceChange -= rec.amount;
+
+        final targetIdx =
+            _accounts.indexWhere((a) => a.id == rec.transferTargetAccountId);
+        if (targetIdx != -1) {
+          final toAcc = _accounts[targetIdx];
+          final updatedToBalance = toAcc.type == AccountType.credit
+              ? toAcc.balance - rec.amount
+              : toAcc.balance + rec.amount;
+          _accounts[targetIdx] = toAcc.copyWith(balance: updatedToBalance);
+        }
+      } else if (targetAccount.type == AccountType.credit) {
         // For credit cards: expense increases liability, income decreases liability
         if (rec.type == TransactionType.expense) {
           currentBalance += rec.amount;
           netBalanceChange += rec.amount;
+          outgoingCount++;
         } else if (rec.type == TransactionType.income) {
           currentBalance -= rec.amount;
           netBalanceChange -= rec.amount;
+          incomingCount++;
         }
       } else {
         // For asset accounts (cash, debit): expense decreases asset, income increases asset
         if (rec.type == TransactionType.expense) {
           currentBalance -= rec.amount;
           netBalanceChange -= rec.amount;
+          outgoingCount++;
         } else if (rec.type == TransactionType.income) {
           currentBalance += rec.amount;
           netBalanceChange += rec.amount;
+          incomingCount++;
         }
       }
     }
@@ -823,6 +1027,10 @@ class FinanceProvider with ChangeNotifier {
       netBalanceChange: netBalanceChange,
       accountName: targetAccount.name,
       errorMessages: errorMessages,
+      batchId: batchId,
+      incomingCount: incomingCount,
+      outgoingCount: outgoingCount,
+      transferCount: transferCount,
     );
   }
 
@@ -920,6 +1128,7 @@ class FinanceProvider with ChangeNotifier {
     _lastUpdated = DateTime.now();
     final vaultData = _toVaultMap();
     await _storageService.saveVault(vaultData);
+    onVaultChanged?.call(vaultData);
   }
 
   Map<String, dynamic> toVaultMap() => _toVaultMap();
@@ -984,7 +1193,8 @@ class FinanceProvider with ChangeNotifier {
       _biometricsEnabled =
           p['biometricsEnabled'] as bool? ?? _biometricsEnabled;
       _isDarkMode = p['isDarkMode'] as bool? ?? _isDarkMode;
-      _hasCompletedOnboarding = p['hasCompletedOnboarding'] as bool? ?? false;
+      _hasCompletedOnboarding =
+          p['hasCompletedOnboarding'] as bool? ?? _hasCompletedOnboarding;
       if (p['onboardingData'] != null && p['onboardingData'] is Map) {
         _onboardingData = Map<String, dynamic>.from(p['onboardingData'] as Map);
       }
@@ -1018,6 +1228,10 @@ class FinanceProvider with ChangeNotifier {
           .where((b) => !b.isSample && !_isLegacySampleBudget(b.id, b.name))
           .toList();
       _recalculateBudgets();
+    }
+
+    if (_accounts.isNotEmpty || _expenses.isNotEmpty) {
+      _hasCompletedOnboarding = true;
     }
   }
 
@@ -1080,6 +1294,9 @@ class FinanceProvider with ChangeNotifier {
         return '🏢';
       case 'other':
         return '💰';
+      case 'uncategorized':
+      case 'uncategorised':
+        return '📋';
       default:
         return '💳';
     }

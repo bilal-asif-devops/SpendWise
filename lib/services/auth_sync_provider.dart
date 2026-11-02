@@ -27,6 +27,8 @@ class AuthSyncProvider with ChangeNotifier {
   Map<String, dynamic>? _pendingGuestVault;
 
   StreamSubscription<AuthUser?>? _authSubscription;
+  final Completer<void> _initialAuthCompleter = Completer<void>();
+  Timer? _autoSyncDebounce;
 
   AuthSyncProvider({
     required AuthService authService,
@@ -38,6 +40,7 @@ class AuthSyncProvider with ChangeNotifier {
         _cloudSyncService = cloudSyncService,
         _storageService = storageService,
         _financeProvider = financeProvider {
+    _attachFinanceListener();
     if (autoInitialize) {
       _init();
     }
@@ -75,6 +78,21 @@ class AuthSyncProvider with ChangeNotifier {
   bool get hasPendingGuestMigration => _hasPendingGuestMigration;
   Map<String, dynamic>? get pendingGuestVault => _pendingGuestVault;
   bool get isBackendConfigured => _authService.isConfigured;
+  Future<void> get ensureInitialized => _initialAuthCompleter.future;
+  bool get isAuthInitialized => _initialAuthCompleter.isCompleted;
+
+  void _attachFinanceListener() {
+    _financeProvider.onVaultChanged = (vaultData) {
+      if (isAuthenticated && !isGuest && _currentUser != null) {
+        _syncStatus = SyncStatus.syncing;
+        notifyListeners();
+        _autoSyncDebounce?.cancel();
+        _autoSyncDebounce = Timer(const Duration(milliseconds: 300), () async {
+          await syncVaultWithCloud();
+        });
+      }
+    };
+  }
 
   void _init() {
     final initialUser = _authService.currentUser;
@@ -82,6 +100,9 @@ class AuthSyncProvider with ChangeNotifier {
       _currentUser = initialUser;
       _status = AuthStatus.authenticated;
       _updateFinanceProfile(initialUser);
+      if (!_initialAuthCompleter.isCompleted) {
+        _initialAuthCompleter.complete();
+      }
     }
 
     _authSubscription = _authService.authStateChanges.listen((user) async {
@@ -89,6 +110,9 @@ class AuthSyncProvider with ChangeNotifier {
         'AuthSyncProvider [Safe Diagnostics]: authStateChanges received '
         'userExists=${user != null}, emailDomain=${user?.email?.split('@').last}',
       );
+      if (!_initialAuthCompleter.isCompleted) {
+        _initialAuthCompleter.complete();
+      }
       if (user != null) {
         _currentUser = user;
         _status = AuthStatus.authenticated;
@@ -263,7 +287,50 @@ class AuthSyncProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateDisplayName(String newName) async {
+    final cleanName = newName.trim();
+    if (cleanName.isEmpty) {
+      _errorMessage = "Name cannot be empty.";
+      notifyListeners();
+      return false;
+    }
+    if (cleanName.length < 2) {
+      _errorMessage = "Name must be at least 2 characters.";
+      notifyListeners();
+      return false;
+    }
+
+    _setProcessing(true);
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      if (isAuthenticated && _currentUser != null && !isGuest) {
+        await _authService.updateDisplayName(cleanName);
+        _currentUser = _currentUser!.copyWith(displayName: cleanName);
+      }
+      _financeProvider.updateProfile(name: cleanName);
+      if (isAuthenticated && !isGuest && _currentUser != null) {
+        await syncVaultWithCloud();
+      }
+      _setProcessing(false);
+      notifyListeners();
+      return true;
+    } on AuthException catch (e) {
+      _errorMessage = e.message;
+      _setProcessing(false);
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Failed to update profile: $e';
+      _setProcessing(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
   void continueAsGuest() {
+    _autoSyncDebounce?.cancel();
     _status = AuthStatus.guest;
     _currentUser = null;
     _errorMessage = null;
@@ -276,6 +343,7 @@ class AuthSyncProvider with ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _autoSyncDebounce?.cancel();
     _setProcessing(true);
     try {
       await _authService.signOut();
@@ -297,7 +365,7 @@ class AuthSyncProvider with ChangeNotifier {
   }
 
   Future<void> syncVaultWithCloud() async {
-    if (!isAuthenticated || _currentUser == null) return;
+    if (!isAuthenticated || _currentUser == null || isGuest) return;
 
     _syncStatus = SyncStatus.syncing;
     notifyListeners();
@@ -307,26 +375,45 @@ class AuthSyncProvider with ChangeNotifier {
       final cloudVault = await _cloudSyncService.downloadVault(userId: userId);
       final localVault = _financeProvider.toVaultMap();
 
-      if (cloudVault == null) {
+      if (cloudVault == null || cloudVault.isEmpty) {
         // First cloud sync: upload local vault
         await _cloudSyncService.uploadVault(
             userId: userId, vaultData: localVault);
       } else {
-        final cloudUpdated =
-            DateTime.tryParse(cloudVault['lastUpdated']?.toString() ?? '') ??
-                DateTime(2000);
-        final localUpdated =
-            DateTime.tryParse(localVault['lastUpdated']?.toString() ?? '') ??
-                DateTime(2000);
+        final bool localHasRealData =
+            _financeProvider.accounts.any((a) => !a.isSample) ||
+                _financeProvider.expenses.any((e) => !e.isSample);
+        final bool cloudHasRealData =
+            (cloudVault['accounts'] as List?)?.isNotEmpty == true ||
+                (cloudVault['expenses'] as List?)?.isNotEmpty == true;
 
-        if (cloudUpdated.isAfter(localUpdated)) {
-          // Cloud has newer data: update local provider
+        if (!localHasRealData && cloudHasRealData) {
+          // Cloud has real records but local has none (e.g. reload or new device):
+          // Always restore cloud vault to avoid wiping remote records.
           _financeProvider.loadFromVaultMap(cloudVault);
           await _storageService.saveVault(cloudVault);
-        } else {
-          // Local has newer or equal data: upload local vault to cloud
+        } else if (localHasRealData && !cloudHasRealData) {
+          // Local has real data, cloud was empty:
           await _cloudSyncService.uploadVault(
               userId: userId, vaultData: localVault);
+        } else {
+          // Both have records or both are empty: compare timestamps
+          final cloudUpdated =
+              DateTime.tryParse(cloudVault['lastUpdated']?.toString() ?? '') ??
+                  DateTime(2000);
+          final localUpdated =
+              DateTime.tryParse(localVault['lastUpdated']?.toString() ?? '') ??
+                  DateTime(2000);
+
+          if (cloudUpdated.isAfter(localUpdated)) {
+            // Cloud has newer data: update local provider
+            _financeProvider.loadFromVaultMap(cloudVault);
+            await _storageService.saveVault(cloudVault);
+          } else {
+            // Local has newer or equal data: upload local vault to cloud
+            await _cloudSyncService.uploadVault(
+                userId: userId, vaultData: localVault);
+          }
         }
       }
 
@@ -387,6 +474,8 @@ class AuthSyncProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _autoSyncDebounce?.cancel();
+    _financeProvider.onVaultChanged = null;
     _authSubscription?.cancel();
     super.dispose();
   }

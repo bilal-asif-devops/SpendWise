@@ -13,5 +13,6 @@ abstract class AuthService {
   });
   Future<AuthUser?> signInWithGoogle();
   Future<void> sendPasswordResetEmail(String email);
+  Future<void> updateDisplayName(String displayName);
   Future<void> signOut();
 }

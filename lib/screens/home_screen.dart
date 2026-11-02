@@ -33,7 +33,7 @@ class HomeScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -171,13 +171,17 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      "${finance.currency}${finance.safeToSpendBalance.toStringAsFixed(2)}",
-                      style: const TextStyle(
-                        fontSize: 38,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "${finance.currency}${finance.safeToSpendBalance.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontSize: 38,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -269,7 +273,7 @@ class HomeScreen extends StatelessWidget {
                 )
               else
                 SizedBox(
-                  height: 100,
+                  height: 108,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: finance.accounts.length,
@@ -278,7 +282,8 @@ class HomeScreen extends StatelessWidget {
                       final acc = finance.accounts[idx];
                       return Container(
                         width: 145,
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 11),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceWhite,
                           borderRadius: BorderRadius.circular(18),
@@ -301,8 +306,11 @@ class HomeScreen extends StatelessWidget {
                                         fontWeight: FontWeight.bold),
                                   ),
                                 ),
-                                Text(acc.icon,
-                                    style: const TextStyle(fontSize: 13)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  acc.icon.length > 2 ? '🏛️' : acc.icon,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
                               ],
                             ),
                             Text(
@@ -798,7 +806,7 @@ class HomeScreen extends StatelessWidget {
   Widget _buildEmptyHomeView(BuildContext context, FinanceProvider finance,
       AuthSyncProvider? authSync, String displayName, String? photoUrl) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           "Home",

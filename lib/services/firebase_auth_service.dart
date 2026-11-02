@@ -7,14 +7,29 @@ import '../models/auth_models.dart';
 import 'auth_service.dart';
 
 class FirebaseAuthService implements AuthService {
+  static const String _webClientId =
+      '60973036917-e0ri1cuk1fl7mgj0mut4j15bnicpheeg.apps.googleusercontent.com';
+
+  Future<void>? _googleSignInInitFuture;
+
   FirebaseAuthService() {
     if (!kIsWeb) {
+      _ensureGoogleSignInInitialized();
+    }
+  }
+
+  Future<void> _ensureGoogleSignInInitialized() async {
+    if (kIsWeb) return;
+    _googleSignInInitFuture ??= () async {
       try {
-        GoogleSignIn.instance.initialize();
+        await GoogleSignIn.instance.initialize(
+          serverClientId: _webClientId,
+        );
       } catch (e) {
         debugPrint('GoogleSignIn.instance.initialize note: $e');
       }
-    }
+    }();
+    await _googleSignInInitFuture;
   }
 
   @override
@@ -147,14 +162,26 @@ class FirebaseAuthService implements AuthService {
         if (user == null) return null;
         return _mapFirebaseUser(user);
       } else {
+        // Ensure Google Sign-In is initialized with the Web Client ID
+        await _ensureGoogleSignInInitialized();
+
         // Mobile flow using google_sign_in 7.2.0 API
         final GoogleSignInAccount googleAccount =
             await GoogleSignIn.instance.authenticate();
         final GoogleSignInAuthentication googleAuth =
             googleAccount.authentication;
 
+        final idToken = googleAuth.idToken;
+        if (idToken == null) {
+          throw const AuthException(
+            message:
+                'Failed to obtain Google ID token. Please verify that your debug keystore SHA-1 fingerprint is registered in the Firebase Console.',
+            code: 'null-id-token',
+          );
+        }
+
         final fb.OAuthCredential credential = fb.GoogleAuthProvider.credential(
-          idToken: googleAuth.idToken,
+          idToken: idToken,
         );
 
         final userCredential =
@@ -222,6 +249,26 @@ class FirebaseAuthService implements AuthService {
         message: 'Password reset request failed: $e',
         originalError: e,
       );
+    }
+  }
+
+  @override
+  Future<void> updateDisplayName(String displayName) async {
+    _ensureConfigured();
+    final user = fb.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await user.updateDisplayName(displayName.trim());
+        await user.reload();
+      } on fb.FirebaseAuthException catch (e) {
+        throw _mapFirebaseAuthException(e);
+      } catch (e) {
+        if (e is AuthException) rethrow;
+        throw AuthException(
+          message: 'Failed to update profile name: $e',
+          originalError: e,
+        );
+      }
     }
   }
 

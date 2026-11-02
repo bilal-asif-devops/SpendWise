@@ -34,7 +34,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) => setState(() => _currentIndex = index),
-        backgroundColor: AppColors.surfaceWhite,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkCard
+            : AppColors.surfaceWhite,
         indicatorColor: AppColors.accentGreen.withValues(alpha: 0.18),
         elevation: 8,
         destinations: const [

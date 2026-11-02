@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../models/auth_models.dart';
 import '../models/models.dart';
 import 'auth_service.dart';
@@ -39,6 +40,15 @@ class LocalAuthService implements AuthService, CloudSyncService {
 
   void setSimulateNetworkError(bool error) {
     _simulateNetworkError = error;
+  }
+
+  @visibleForTesting
+  void setCurrentUser(AuthUser? user) {
+    _currentUser = user;
+    if (user != null) {
+      _users[user.uid] = user;
+    }
+    _authStateController.add(user);
   }
 
   @override
@@ -196,12 +206,31 @@ class LocalAuthService implements AuthService, CloudSyncService {
   }
 
   @override
+  Future<void> updateDisplayName(String displayName) async {
+    if (_simulateNetworkError) {
+      throw const AuthException(
+        message: 'Network connection failed. Please check your internet.',
+        code: 'network-request-failed',
+      );
+    }
+    if (_currentUser != null) {
+      final updated = _currentUser!.copyWith(displayName: displayName.trim());
+      _currentUser = updated;
+      _users[updated.uid] = updated;
+      _authStateController.add(updated);
+    }
+  }
+
+  @override
   Future<void> signOut() async {
     _currentUser = null;
     _authStateController.add(null);
   }
 
   // --- CloudSyncService Implementation ---
+
+  @visibleForTesting
+  Map<String, dynamic>? getRawCloudVault(String userId) => _cloudVaults[userId];
 
   @override
   Future<void> uploadVault({
@@ -215,8 +244,18 @@ class LocalAuthService implements AuthService, CloudSyncService {
         code: 'network-error',
       );
     }
+    if (_currentUser != null && _currentUser!.uid != userId) {
+      throw const AuthException(
+        message:
+            'Permission denied: Authenticated user does not match target user ID.',
+        code: 'permission-denied',
+      );
+    }
+    final now = DateTime.now();
     final payload = Map<String, dynamic>.from(vaultData);
-    payload['lastUpdated'] = DateTime.now().toIso8601String();
+    payload['lastUpdated'] = now.toIso8601String();
+    payload['updatedBy'] = userId;
+    payload['clientTimestamp'] = now.millisecondsSinceEpoch;
     _cloudVaults[userId] = payload;
   }
 
@@ -229,6 +268,13 @@ class LocalAuthService implements AuthService, CloudSyncService {
         message:
             'Could not download financial data. Device appears to be offline.',
         code: 'network-error',
+      );
+    }
+    if (_currentUser != null && _currentUser!.uid != userId) {
+      throw const AuthException(
+        message:
+            'Permission denied: Authenticated user does not match target user ID.',
+        code: 'permission-denied',
       );
     }
     final data = _cloudVaults[userId];
